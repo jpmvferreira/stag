@@ -4,6 +4,7 @@ from fuse import FUSE, FuseOSError, Operations
 import sqlite3
 import click
 import errno
+import stat
 import sys
 import os
 
@@ -87,13 +88,77 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def getattr(self, path, fh=None):
-        """ Fetches the attributes of a file or folder.
+        """ Fetches the attributes of a file or folder in the virtual filesystem.
 
         Args:
-            `path` (str): The path to the file or folder in the virtual filesystem.
+            path (str): The path to the file or folder in the virtual filesystem.
+            fh (int, optional): File handle (ignored). Defaults to None.
+
+        Returns:
+            dict: A dictionary with the attributes of the specified path, similar to the output of os.lstat().
+
+        Raises:
+            FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        # split `path` to get the basename
+        basename = path.split("/")[-1]
+
+        # if `path` is an empty string, it corresponds to the root directory of the mount dir
+        # if this is the case, we fetch the attributes of the source dir
+        if basename == "":
+            st = os.lstat(self.src)
+            at = dict((key, getattr(st, key)) for key in (
+                'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
+            ))
+
+        # if it's a tag
+        elif os.path.isdir(self.src + "/" + basename):
+            # check if there is at least one file with the tags in `tags`
+            tags = path.split("/")[1:]
+
+            conditions = []
+            for tag in tags:
+                conditions.append(f"tags LIKE '%/{tag}/%'")
+            query = "SELECT path, tags FROM files WHERE " + " AND ".join(conditions)
+
+            res = self.cur.execute(query).fetchone()
+
+            # if there is at least one file, then this is a valid path
+            # otherwise, it isn't, and it doesn't exist
+            if res:
+                st = os.lstat(self.src + "/" + basename)
+                at = dict((key, getattr(st, key)) for key in (
+                    'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
+                ))
+            else:
+                raise FuseOSError(errno.ENOENT)
+
+        # if it's a file
+        elif os.path.isfile(self.src + "/" + basename):
+            # fetch the tags associated with this file in the database
+            res = self.cur.execute(f"SELECT tags FROM files WHERE path LIKE '{basename}'").fetchone()
+            res_tags = [tag for tag in res[0].split("/") if tag]
+
+            # fetch the tags coming from the path
+            tags = path.split("/")[1:-1]
+
+            # if the tags on the requested path is a subset of the tags on the database, then the path is valid
+            # otherwise, it is not a valid path, therefore there is no file at the specified location
+            if (set(tags) <= set(res_tags)):
+                st = os.lstat(self.src + "/" + basename)
+                at = dict((key, getattr(st, key)) for key in (
+                    'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
+                ))
+                at['st_mode'] = at['st_mode'] | stat.S_IFLNK  # make every file look as a symlink
+            else:
+                raise FuseOSError(errno.ENOENT)
+
+        # if it's neither a file nor a folder, then it does not exist
+        else:
+            raise FuseOSError(errno.ENOENT)
+
+        return at
 
     def getxattr(self, path, name, position=0):
         """ Get the value of an extended filesystem attribute for a given file or folder.
@@ -144,13 +209,19 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def readlink(self, path):
-        """ Follows symlinks to return the real path.
+        """ Return the target path of a symlink in the virtual filesystem.
 
         Args:
-            `path` (str): The path to the symlink.
+            path (str): The path to the symlink in the virtual filesystem.
+
+        Returns:
+            str: The path to the corresponding real file in the source directory.
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        # split `path` to get the basename
+        basename = path.split("/")[-1]
+
+        return self.src + "/" + basename
 
     def removexattr(self, path, name):
         """ Removes the value of an extended filesystem attribute.
@@ -245,13 +316,52 @@ class StagFS(Operations):
         return 0
 
     def readdir(self, path, fh):
-        """ Reads the content of a directory.
+        """ Reads the content of a directory in the virtual filesystem.
 
         Args:
-            `path` (str): The path to the folder.
+            path (str): The path to the directory in the virtual filesystem.
+            fh (int): File handle (ignored).
+
+        Yields:
+            str: The names of entries in the directory, including files, tags (as subdirectories), and '.' and '..'.
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        # split `path` to get the basename
+        basename = path.split("/")[-1]
+
+        # contents of the directory
+        dirents = ['.', '..']
+
+        # if it's the root directory
+        if basename == "":
+            dirents.extend(os.listdir(self.src))
+
+        # if it's a tag
+        elif os.path.isdir(self.src + "/" + basename):
+            # path is always preceeded by a slash
+            tags = path.split("/")[1:]
+
+            # make a query where we fetch all files that have the tags present in the variable `tags`
+            conditions = []
+            for tag in tags:
+                conditions.append(f"tags LIKE '%/{tag}/%'")
+            query = "SELECT path, tags FROM files WHERE " + " AND ".join(conditions)
+
+            res = self.cur.execute(query).fetchall()
+
+            # go over all results, append all the files and return unique tags
+            for line in res:
+                file, ctag = line
+
+                dirents.append(file)
+                for tag in [i for i in ctag.split("/") if i]:
+                    # NOTE: if the nº of files get large the following for loop is inefficient
+                    # instead of writing `tag not in dirents` maybe have an auxiliary var to hold already printed tags
+                    if tag not in tags and tag not in dirents:
+                        dirents.append(tag)
+
+        for r in dirents:
+            yield r
 
     def releasedir(self, path, fh):
         """ Release directory.
