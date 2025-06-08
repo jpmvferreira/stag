@@ -1,0 +1,5 @@
+# personal files
+personal/
+
+# tests are currently performed manually
+tests/

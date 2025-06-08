@@ -1,0 +1,416 @@
+#!/usr/bin/env python3
+
+from fuse import FUSE, FuseOSError, Operations
+import sqlite3
+import click
+import errno
+import sys
+import os
+
+
+class StagFS(Operations):
+    # ---------------------------------------------------------------------------------------------------------------
+    # Initialization and destruction
+    # ---------------------------------------------------------------------------------------------------------------
+
+    def __init__(self, src, db):
+        """ Called on object initialization.
+        """
+
+        self.src = src
+        self.con = sqlite3.connect(db)
+        self.cur = self.con.cursor()
+
+    def __del__(self):
+        """ Called on object destruction.
+        """
+
+        self.con.close()
+
+        pass
+
+    def init(self, path):
+        """ Called on filesystem initialization.
+
+        This function must be used instead of `__init__` if you start threads on initialization.
+
+        Args:
+            `path` (str): Is always `"/"`.
+        """
+
+        pass
+
+    def destroy(self, path):
+        """ Called on filesystem destruction.
+
+        Args:
+            `path` (str): Is always `"/"`.
+        """
+
+        pass
+
+    # ---------------------------------------------------------------------------------------------------------------
+    # Filesystem methods
+    # ---------------------------------------------------------------------------------------------------------------
+
+    def access(self, path, mode):
+        """ Determines the accessibility of a file or folder.
+
+        According to the manpage of the function `access`, the usage of this function is discouraged and may be formally deprecated in the future.
+
+        Args:
+            `path` (str): The path to the file or folder in the virtual filesystem.
+            `mode` (int): The mode to check if the `path` is accesible.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def chmod(self, path, mode):
+        """ Changes the permissions of a given path.
+
+        Args:
+            `path` (str): The path to the file or folder.
+            `mode` (int): The numeric value of the permissions.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def chown(self, path, uid, gid):
+        """ Changes the owner of a given path.
+
+        Args:
+            `path` (str): The path to the file or folder.
+            `uid` (int): User ID.
+            `gid` (int): Group ID
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def getattr(self, path, fh=None):
+        """ Fetches the attributes of a file or folder.
+
+        Args:
+            `path` (str): The path to the file or folder in the virtual filesystem.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def getxattr(self, path, name, position=0):
+        """ Get the value of an extended filesystem attribute for a given file or folder.
+
+        Args:
+            `path` (str): The path to the file or directory in the virtual filesystem.
+            `name` (str): The name of the extended attribute to retrieve.
+            `position` (int, optional): No idea what this does. Defaults to 0.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def ioctl(self, path, cmd, arg, fip, flags, data):
+        """ Performs a variety of control functions related to streams devices.
+
+        Args:
+            TODO
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def link(self, target, source):
+        """ Creates a hardlink between two paths.
+
+        Args:
+            `target` (str): Target location for the hardlink in the virtual filesystem.
+            `source` (str): File that the hardlink will point to in the virtual filesystem.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def listxattr(self, path):
+        """ List the extended attributes of a file or folder.
+
+        Args:
+            `path` (str): The path to a file or directory in the virtual filesystem.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def mknod(self, path, mode, dev):
+        """ Creates special files.
+
+        Args:
+            TODO
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def readlink(self, path):
+        """ Follows symlinks to return the real path.
+
+        Args:
+            `path` (str): The path to the symlink.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def removexattr(self, path, name):
+        """ Removes the value of an extended filesystem attribute.
+
+        Args:
+            `path` (str): The path to the file or directory.
+            `name` (str): The name of the extended attribute to retrieve.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def rename(self, old, new):
+        """ Moves (or, in particular, renames) a file or folder.
+
+        Args:
+            `old` (str): The path to the file or directory.
+            `new` (str): The new path to the file or directory.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def setxattr(self, path, name, value, options, position=0):
+        """ Sets the value of an extended filesystem attribute.
+
+        Args:
+            TODO
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def statfs(self, path):
+        """ Get the filesystem statistics.
+
+        Args:
+            `path` (str): The path to the file or folder.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def symlink(self, name, target):
+        """ Creates a symlink.
+
+        Args:
+            `name` (str): The path of the symlink.
+            `target` (str): The path which the symlink will point to.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def unlink(self, path):
+        """ Deletes a file.
+
+        Args:
+            `path` (str): The path to the file to remove.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def utimens(self, path, times=None):
+        """ Sets the access and modified times of a file or folder.
+
+        Args:
+            `path` (str): The path to a file or folder in the virtual filesystem.
+            `times`: If times is not `None`, it must be a 2-tuple of the form `(atime, mtime)` where each member is an int or float expressing seconds.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    # ---------------------------------------------------------------------------------------------------------------
+    # Folder methods
+    # ---------------------------------------------------------------------------------------------------------------
+
+    def fsyncdir(self, path, datasync, fh):
+        """ Synchronize directory contents.
+        """
+
+        return 0
+
+    def mkdir(self, path, mode):
+        """ Creates a directory.
+
+        Args:
+            `path` (str): The path to create a new folder.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def opendir(self, path):
+        """ Open directory.
+        """
+
+        return 0
+
+    def readdir(self, path, fh):
+        """ Reads the content of a directory.
+
+        Args:
+            `path` (str): The path to the folder.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def releasedir(self, path, fh):
+        """ Release directory.
+        """
+        return 0
+
+    def rmdir(self, path):
+        """ Deletes a folder.
+
+        Args:
+            `path` (str): The location of the folder to remove.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    # ---------------------------------------------------------------------------------------------------------------
+    # File methods
+    # ---------------------------------------------------------------------------------------------------------------
+
+    def create(self, path, mode, fi=None):
+        """ Create a file at the provided path in the virtual filesystem, with a specific mode.
+
+        Args:
+            `path` (str): The location of the file .
+            `mode` (str): The mode for the new file.
+            `fi` (int): Maybe this is meant to be a file descriptor? Defaults to `None`.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def flush(self, path, fh):
+        """ Flush buffered output for a channel.
+
+        Args:
+            `path` (str): Path to the file in the virtual filesystem. Ignored.
+            `fh` (int): File descriptor.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def fsync(self, path, fdatasync, fh):
+        """ Synchronize changes to a file.
+
+        Args:
+            TODO
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def open(self, path, flags):
+        """ Opens a file for reading.
+
+        Args;
+            `path` (str): The path to the file to open in the virtual filesystem.
+            `flags` (int): The mode to open the file.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def read(self, path, length, offset, fh):
+        """ Reads from file.
+
+        Args:
+            TODO
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def release(self, path, fh):
+        """ Closes an open file.
+
+        Args:
+            `path` (str): The path to the file in the virtual filesystem.
+            `fh` (int): File descriptor.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def truncate(self, path, length, fh=None):
+        """ Shrinks or extends the size of a file by a specified length.
+
+        Args:
+            `path` (str): The path to the file in the virtual filesystem.
+            `length` (int): The desired size in bytes for the file.
+            `fh` (int): I think this is meant to be a file descriptor. Defaults to `None`.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def write(self, path, buf, offset, fh):
+        """ Writes content to open file.
+
+        Args:
+            TODO
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+
+@click.command()
+@click.option(     "-i", "--init",  type=click.STRING, nargs=1, metavar="<PATH>",      help="Initialize a Stag repository")
+@click.option(     "-m", "--mount", type=click.STRING, nargs=2, metavar="<SRC> <MNT>", help="Mount a Stag repository")
+@click.help_option("-h", "--help",                                                     help="Show help dialog")
+def main(init, mount):
+    if init and mount:
+        raise click.UsageError('Cannot use -i, --init and -m, --mount together')
+
+    # initialize a Stag repository
+    if init:
+        init = os.path.abspath(init)
+
+        # check if `init` exists
+        if not os.path.isdir(init):
+            raise Exception(f"folder {init} does not exist")
+
+        # check if `init` is empty
+        if os.listdir(init):
+            raise Exception(f"folder {init} is not empty")
+
+        # initialize the database
+        con = sqlite3.connect(f"{init}/stag.sql")
+        cur = con.cursor()
+        cur.execute("CREATE TABLE files(path, tags)")
+        cur.execute("CREATE TABLE tags(tags)")
+        con.commit()
+        con.close()
+
+        # create folder for files
+        os.popen(f"mkdir {init}/files")
+
+        # print success message
+        print(f"Empty Stag repository initialized in {init}")
+
+    # mount a Stag repository
+    if mount:
+        src, mnt = mount
+        src = os.path.abspath(src)
+        mnt = os.path.abspath(mnt)
+
+        files = f"{src}/files"
+        db    = f"{src}/stag.sql"
+
+        # check if `src` is a Stag repository
+        if not os.path.isfile(db):
+            raise Exception(f"database file not found in {db}")
+
+        # check if `mnt` exists
+        if not os.path.isdir(mnt):
+            raise Exception(f"folder {mnt} does not exist")
+
+        # check if `mnt` is empty
+        if os.listdir(mnt):
+            raise Exception(f"folder {mnt} is not empty")
+
+        # mount the filesystem
+        FUSE(StagFS(files,db), mnt, nothreads=True, foreground=True)
+
+    return 0
+
+
+if __name__ == '__main__':
+    main()
