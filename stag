@@ -15,7 +15,11 @@ class StagFS(Operations):
     # ---------------------------------------------------------------------------------------------------------------
 
     def __init__(self, src, db):
-        """ Called on object initialization.
+        """Called on object initialization.
+
+        Args:
+            src (str): Path to the directory containing the real files.
+            db (str): Path to the SQLite database file.
         """
 
         self.src = src
@@ -23,7 +27,7 @@ class StagFS(Operations):
         self.cur = self.con.cursor()
 
     def __del__(self):
-        """ Called on object destruction.
+        """Called on object destruction.
         """
 
         self.con.close()
@@ -31,21 +35,21 @@ class StagFS(Operations):
         pass
 
     def init(self, path):
-        """ Called on filesystem initialization.
+        """Called on filesystem initialization.
 
         This function must be used instead of `__init__` if you start threads on initialization.
 
         Args:
-            `path` (str): Is always `"/"`.
+            path (str): Is always `"/"`.
         """
 
         pass
 
     def destroy(self, path):
-        """ Called on filesystem destruction.
+        """Called on filesystem destruction.
 
         Args:
-            `path` (str): Is always `"/"`.
+            path (str): Is always `"/"`.
         """
 
         pass
@@ -382,80 +386,88 @@ class StagFS(Operations):
     # ---------------------------------------------------------------------------------------------------------------
 
     def create(self, path, mode, fi=None):
-        """ Create a file at the provided path in the virtual filesystem, with a specific mode.
+        """Create a new file in the virtual filesystem.
 
         Args:
-            `path` (str): The location of the file .
-            `mode` (str): The mode for the new file.
-            `fi` (int): Maybe this is meant to be a file descriptor? Defaults to `None`.
+            path (str): Path to the file in the virtual filesystem.
+            mode (int): The permissions mode to set on the new file.
+            fi (object, optional): File info object (may be None).
         """
 
         raise FuseOSError(errno.ENOSYS)
 
     def flush(self, path, fh):
-        """ Flush buffered output for a channel.
+        """Flush any cached information for the specified file.
 
         Args:
-            `path` (str): Path to the file in the virtual filesystem. Ignored.
-            `fh` (int): File descriptor.
+            path (str): Path to the file in the virtual filesystem.
+            fh (int): File handle.
         """
 
         raise FuseOSError(errno.ENOSYS)
 
     def fsync(self, path, fdatasync, fh):
-        """ Synchronize changes to a file.
+        """Synchronize file contents and metadata to disk.
 
         Args:
-            TODO
+            path (str): Path to the file in the virtual filesystem.
+            fdatasync (bool): If True, only synchronize user data, not metadata.
+            fh (int): File handle.
         """
 
         raise FuseOSError(errno.ENOSYS)
 
     def open(self, path, flags):
-        """ Opens a file for reading.
+        """Open a file for reading or writing.
 
-        Args;
-            `path` (str): The path to the file to open in the virtual filesystem.
-            `flags` (int): The mode to open the file.
+        Args:
+            path (str): Path to the file in the virtual filesystem.
+            flags (int): Flags indicating access mode and options.
         """
 
         raise FuseOSError(errno.ENOSYS)
 
     def read(self, path, length, offset, fh):
-        """ Reads from file.
+        """Read data from an open file.
 
         Args:
-            TODO
+            path (str): Path to the file in the virtual filesystem.
+            length (int): Number of bytes to read.
+            offset (int): Offset in the file to start reading from.
+            fh (int): File handle.
         """
 
         raise FuseOSError(errno.ENOSYS)
 
     def release(self, path, fh):
-        """ Closes an open file.
+        """Release an open file (close it).
 
         Args:
-            `path` (str): The path to the file in the virtual filesystem.
-            `fh` (int): File descriptor.
+            path (str): Path to the file in the virtual filesystem.
+            fh (int): File handle.
         """
 
         raise FuseOSError(errno.ENOSYS)
 
     def truncate(self, path, length, fh=None):
-        """ Shrinks or extends the size of a file by a specified length.
+        """Resize a file to a specified length.
 
         Args:
-            `path` (str): The path to the file in the virtual filesystem.
-            `length` (int): The desired size in bytes for the file.
-            `fh` (int): I think this is meant to be a file descriptor. Defaults to `None`.
+            path (str): Path to the file in the virtual filesystem.
+            length (int): The new size of the file in bytes.
+            fh (int, optional): File handle (may be None).
         """
 
         raise FuseOSError(errno.ENOSYS)
 
     def write(self, path, buf, offset, fh):
-        """ Writes content to open file.
+        """Write data to an open file.
 
         Args:
-            TODO
+            path (str): Path to the file in the virtual filesystem.
+            buf (bytes): Data to write.
+            offset (int): Offset in the file to start writing at.
+            fh (int): File handle.
         """
 
         raise FuseOSError(errno.ENOSYS)
