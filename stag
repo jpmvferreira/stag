@@ -165,12 +165,17 @@ class StagFS(Operations):
         return at
 
     def getxattr(self, path, name, position=0):
-        """ Get the value of an extended filesystem attribute for a given file or folder.
+        """Get the value of an extended attribute for a file or directory.
+
+        Extended attributes are not supported in this system and this function will always raise FuseOSError.
 
         Args:
-            `path` (str): The path to the file or directory in the virtual filesystem.
-            `name` (str): The name of the extended attribute to retrieve.
-            `position` (int, optional): No idea what this does. Defaults to 0.
+            path (str): The path to the file or directory in the virtual filesystem.
+            name (str): The name of the extended attribute to retrieve.
+            position (int, optional): Offset within the attribute value (usually 0, rarely used).
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -195,10 +200,15 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def listxattr(self, path):
-        """ List the extended attributes of a file or folder.
+        """List all extended attribute names for a file or directory.
+
+        Extended attributes are not supported in this system and this function will always raise FuseOSError.
 
         Args:
-            `path` (str): The path to a file or directory in the virtual filesystem.
+            path (str): The path to a file or directory in the virtual filesystem.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -228,11 +238,16 @@ class StagFS(Operations):
         return self.src + "/" + basename
 
     def removexattr(self, path, name):
-        """ Removes the value of an extended filesystem attribute.
+        """Remove an extended attribute from a file or directory.
+
+        Extended attributes are not supported in this system and this function will always raise FuseOSError.
 
         Args:
-            `path` (str): The path to the file or directory.
-            `name` (str): The name of the extended attribute to retrieve.
+            path (str): The path to the file or directory.
+            name (str): The name of the extended attribute to remove.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -248,10 +263,19 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def setxattr(self, path, name, value, options, position=0):
-        """ Sets the value of an extended filesystem attribute.
+        """Set the value of an extended attribute for a file or directory.
+
+        Extended attributes are not supported in this system and this function will always raise FuseOSError.
 
         Args:
-            TODO
+            path (str): The path to the file or directory.
+            name (str): The name of the extended attribute to set.
+            value (bytes): The value to set for the attribute.
+            options (int): Flags indicating how the attribute should be set (e.g., create, replace).
+            position (int, optional): Offset within the attribute value (usually 0, rarely used).
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
