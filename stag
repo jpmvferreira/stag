@@ -341,6 +341,14 @@ class StagFS(Operations):
 
     def fsyncdir(self, path, datasync, fh):
         """ Synchronize directory contents.
+
+         Args:
+            path (str): The path to the directory in the virtual filesystem.
+            datasync (bool): If True, only synchronize user data, not metadata.
+            fh (int): File handle for the directory.
+
+        Returns:
+            int: Always returns 0.
         """
 
         return 0
@@ -355,7 +363,13 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def opendir(self, path):
-        """ Open directory.
+        """Open a directory for reading.
+
+        Args:
+            path (str): The path to the directory in the virtual filesystem.
+
+        Returns:
+            int: Always returns 0.
         """
 
         return 0
@@ -409,7 +423,14 @@ class StagFS(Operations):
             yield r
 
     def releasedir(self, path, fh):
-        """ Release directory.
+        """Release resources associated with an open directory.
+
+        Args:
+            path (str): The path to the directory in the virtual filesystem.
+            fh (int): File handle for the directory.
+
+        Returns:
+            int: Always returns 0.
         """
 
         return 0
