@@ -412,10 +412,15 @@ class StagFS(Operations):
     def create(self, path, mode, fi=None):
         """Create a new file in the virtual filesystem.
 
+        File methods are not supported in this system and this function will always raise FuseOSError.
+
         Args:
             path (str): Path to the file in the virtual filesystem.
             mode (int): The permissions mode to set on the new file.
             fi (object, optional): File info object (may be None).
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -423,9 +428,14 @@ class StagFS(Operations):
     def flush(self, path, fh):
         """Flush any cached information for the specified file.
 
+        File methods are not supported in this system and this function will always raise FuseOSError.
+
         Args:
             path (str): Path to the file in the virtual filesystem.
             fh (int): File handle.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -433,10 +443,15 @@ class StagFS(Operations):
     def fsync(self, path, fdatasync, fh):
         """Synchronize file contents and metadata to disk.
 
+        File methods are not supported in this system and this function will always raise FuseOSError.
+
         Args:
             path (str): Path to the file in the virtual filesystem.
             fdatasync (bool): If True, only synchronize user data, not metadata.
             fh (int): File handle.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -444,9 +459,14 @@ class StagFS(Operations):
     def open(self, path, flags):
         """Open a file for reading or writing.
 
+        File methods are not supported in this system and this function will always raise FuseOSError.
+
         Args:
             path (str): Path to the file in the virtual filesystem.
             flags (int): Flags indicating access mode and options.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -454,11 +474,16 @@ class StagFS(Operations):
     def read(self, path, length, offset, fh):
         """Read data from an open file.
 
+        File methods are not supported in this system and this function will always raise FuseOSError.
+
         Args:
             path (str): Path to the file in the virtual filesystem.
             length (int): Number of bytes to read.
             offset (int): Offset in the file to start reading from.
             fh (int): File handle.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -466,9 +491,14 @@ class StagFS(Operations):
     def release(self, path, fh):
         """Release an open file (close it).
 
+        File methods are not supported in this system and this function will always raise FuseOSError.
+
         Args:
             path (str): Path to the file in the virtual filesystem.
             fh (int): File handle.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -476,10 +506,15 @@ class StagFS(Operations):
     def truncate(self, path, length, fh=None):
         """Resize a file to a specified length.
 
+        File methods are not supported in this system and this function will always raise FuseOSError.
+
         Args:
             path (str): Path to the file in the virtual filesystem.
             length (int): The new size of the file in bytes.
             fh (int, optional): File handle (may be None).
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -487,11 +522,16 @@ class StagFS(Operations):
     def write(self, path, buf, offset, fh):
         """Write data to an open file.
 
+        File methods are not supported in this system and this function will always raise FuseOSError.
+
         Args:
             path (str): Path to the file in the virtual filesystem.
             buf (bytes): Data to write.
             offset (int): Offset in the file to start writing at.
             fh (int): File handle.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
