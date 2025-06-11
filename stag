@@ -117,26 +117,39 @@ class StagFS(Operations):
             ))
 
         # if it's a tag
+        # we need to check if `path` is valid, and this implies thatthere is at least one file with these tags
         elif os.path.isdir(self.src + "/" + basename):
-            # check if there is at least one file with the tags in `tags`
             tags = path.split("/")[1:]
 
-            conditions = []
-            for tag in tags:
-                conditions.append(f"tags LIKE '%/{tag}/%'")
-            query = "SELECT path, tags FROM files WHERE " + " AND ".join(conditions)
+            # if there is only on tag in `tags`, its itself, and we can just check directly whether the folder exists
+            if len(tags) == 1:
+                try:
+                    st = os.lstat(f"{self.src}/{basename}")
+                    at = dict((key, getattr(st, key)) for key in (
+                        'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
+                    ))
+                except FileNotFoundError:
+                    raise FuseOSError(errno.ENOENT)
+                except Exception:
+                    raise FuseOSError(errno.EINVAL)
 
-            res = self.cur.execute(query).fetchone()
-
-            # if there is at least one file, then this is a valid path
-            # otherwise, it isn't, and it doesn't exist
-            if res:
-                st = os.lstat(self.src + "/" + basename)
-                at = dict((key, getattr(st, key)) for key in (
-                    'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
-                ))
             else:
-                raise FuseOSError(errno.ENOENT)
+                conditions = []
+                for tag in tags:
+                    conditions.append(f"tags LIKE '%/{tag}/%'")
+                query = "SELECT path, tags FROM files WHERE " + " AND ".join(conditions)
+
+                res = self.cur.execute(query).fetchone()
+
+                # if there is at least one file, then this is a valid path
+                # otherwise, it isn't, and it doesn't exist
+                if res:
+                    st = os.lstat(self.src + "/" + basename)
+                    at = dict((key, getattr(st, key)) for key in (
+                        'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
+                    ))
+                else:
+                    raise FuseOSError(errno.ENOENT)
 
         # if it's a file
         elif os.path.isfile(self.src + "/" + basename):
@@ -375,13 +388,24 @@ class StagFS(Operations):
         return 0
 
     def mkdir(self, path, mode):
-        """ Creates a directory.
+        """ Creates a directory in the virtual filesystem.
+
+        Since tags are folders in the real filesystem, all this function does is create a directory in the real filesystem.
 
         Args:
-            `path` (str): The path to create a new folder.
+            path (str): The path to create a new folder.
+
+        Raises:
+            Whatever os.mkdir() might raise.
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        # split `path` to get the basename
+        basename = path.split("/")[-1]
+
+        # create directory at `basename`
+        os.mkdir(f"{self.src}/{basename}")
+
+        return
 
     def opendir(self, path):
         """Open a directory for reading.
