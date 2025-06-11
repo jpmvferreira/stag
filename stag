@@ -481,13 +481,41 @@ class StagFS(Operations):
         return 0
 
     def rmdir(self, path):
-        """ Deletes a folder.
+        """ Deletes a folder in the virtual filesystem.
 
         Args:
-            `path` (str): The location of the folder to remove.
+            `path` (str): The location of the folder to remove (assuming its always a folder).
+
+        Raises:
+            FuseOSError: errno.ENOENT if it doesn't point to a valid path.
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        # get basename
+        basename = path.split("/")[-1]
+
+        # check whether `path` points to a valid combination of folders
+        tags = path.split("/")[1:]
+
+        if len(tags) > 1:
+            conditions = []
+            for tag in tags:
+                conditions.append(f"tags LIKE '%/{tag}/%'")
+            query = "SELECT path, tags FROM files WHERE " + " AND ".join(conditions)
+
+            res = self.cur.execute(query).fetchone()
+
+            if not res:
+                raise FuseOSError(errno.ENOENT)
+
+        # remove directory
+        os.rmdir(f"{self.src}/{basename}")
+
+        # remove tags from files
+        for tag in tags:
+            self.cur.execute(f"UPDATE files SET tags = REPLACE(tags, '/{tag}/', '')")
+        self.con.commit()
+
+        return
 
     # ---------------------------------------------------------------------------------------------------------------
     # File methods
