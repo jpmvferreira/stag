@@ -167,7 +167,7 @@ class StagFS(Operations):
     def getxattr(self, path, name, position=0):
         """Get the value of an extended attribute for a file or directory.
 
-        Extended attributes are not supported in this system and this function will always raise FuseOSError.
+        Extended attributes are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): The path to the file or directory in the virtual filesystem.
@@ -212,7 +212,7 @@ class StagFS(Operations):
     def listxattr(self, path):
         """List all extended attribute names for a file or directory.
 
-        Extended attributes are not supported in this system and this function will always raise FuseOSError.
+        Extended attributes are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): The path to a file or directory in the virtual filesystem.
@@ -257,7 +257,7 @@ class StagFS(Operations):
     def removexattr(self, path, name):
         """Remove an extended attribute from a file or directory.
 
-        Extended attributes are not supported in this system and this function will always raise FuseOSError.
+        Extended attributes are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): The path to the file or directory.
@@ -282,7 +282,7 @@ class StagFS(Operations):
     def setxattr(self, path, name, value, options, position=0):
         """Set the value of an extended attribute for a file or directory.
 
-        Extended attributes are not supported in this system and this function will always raise FuseOSError.
+        Extended attributes are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): The path to the file or directory.
@@ -411,6 +411,7 @@ class StagFS(Operations):
     def releasedir(self, path, fh):
         """ Release directory.
         """
+
         return 0
 
     def rmdir(self, path):
@@ -429,7 +430,7 @@ class StagFS(Operations):
     def create(self, path, mode, fi=None):
         """Create a new file in the virtual filesystem.
 
-        File methods are not supported in this system and this function will always raise FuseOSError.
+        File methods are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -445,7 +446,7 @@ class StagFS(Operations):
     def flush(self, path, fh):
         """Flush any cached information for the specified file.
 
-        File methods are not supported in this system and this function will always raise FuseOSError.
+        File methods are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -460,7 +461,7 @@ class StagFS(Operations):
     def fsync(self, path, fdatasync, fh):
         """Synchronize file contents and metadata to disk.
 
-        File methods are not supported in this system and this function will always raise FuseOSError.
+        File methods are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -476,7 +477,7 @@ class StagFS(Operations):
     def open(self, path, flags):
         """Open a file for reading or writing.
 
-        File methods are not supported in this system and this function will always raise FuseOSError.
+        File methods are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -491,7 +492,7 @@ class StagFS(Operations):
     def read(self, path, length, offset, fh):
         """Read data from an open file.
 
-        File methods are not supported in this system and this function will always raise FuseOSError.
+        File methods are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -508,7 +509,7 @@ class StagFS(Operations):
     def release(self, path, fh):
         """Release an open file (close it).
 
-        File methods are not supported in this system and this function will always raise FuseOSError.
+        File methods are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -523,7 +524,7 @@ class StagFS(Operations):
     def truncate(self, path, length, fh=None):
         """Resize a file to a specified length.
 
-        File methods are not supported in this system and this function will always raise FuseOSError.
+        File methods are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -539,7 +540,7 @@ class StagFS(Operations):
     def write(self, path, buf, offset, fh):
         """Write data to an open file.
 
-        File methods are not supported in this system and this function will always raise FuseOSError.
+        File methods are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
