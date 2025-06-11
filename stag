@@ -183,8 +183,18 @@ class StagFS(Operations):
     def ioctl(self, path, cmd, arg, fip, flags, data):
         """ Performs a variety of control functions related to streams devices.
 
+        This functionality is not supported in this filesystem and this function will always raise FuseOSError.
+
         Args:
-            TODO
+            path (str): The path to the file or directory in the virtual filesystem.
+            cmd (int): The ioctl command code.
+            arg (int): Additional argument for the ioctl command.
+            fip (object): File information pointer (may be None).
+            flags (int): Flags for the ioctl operation.
+            data (bytes): Optional data for the ioctl operation.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -216,8 +226,15 @@ class StagFS(Operations):
     def mknod(self, path, mode, dev):
         """ Creates special files.
 
+        This functionality is not supported in this filesystem and this function will always raise FuseOSError.
+
         Args:
-            TODO
+            path (str): The path at which to create the node in the virtual filesystem.
+            mode (int): The file type and mode bits (permissions and file type).
+            dev (int): Device number (only relevant for device special files).
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
