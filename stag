@@ -202,9 +202,14 @@ class StagFS(Operations):
     def link(self, target, source):
         """ Creates a hardlink between two paths.
 
+        Symlinks are not supported in this filesystem and this function will always raise FuseOSError.
+
         Args:
             `target` (str): Target location for the hardlink in the virtual filesystem.
             `source` (str): File that the hardlink will point to in the virtual filesystem.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -320,9 +325,14 @@ class StagFS(Operations):
     def symlink(self, name, target):
         """ Creates a symlink.
 
+        Symlinks are not supported in this filesystem and this function will always raise FuseOSError.
+
         Args:
             `name` (str): The path of the symlink.
             `target` (str): The path which the symlink will point to.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
         raise FuseOSError(errno.ENOSYS)
