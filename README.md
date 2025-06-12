@@ -1,8 +1,6 @@
 <br/>
 <p align="center"> <img src="icon.png" alt="Logo" width="150"> </p>
-<p align="center" style="font-size: 32px;">
-  <strong>Stag</strong>
-</p>
+<h3 align="center"> Stag </h3>
 <h3 align="center"> Upgrade your hierarchical filesystem with a tag-based structure </h3>
 <br/>
 
