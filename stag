@@ -86,7 +86,7 @@ class StagFS(Operations):
         Args:
             `path` (str): The path to the file or folder.
             `uid` (int): User ID.
-            `gid` (int): Group ID
+            `gid` (int): Group ID.
         """
 
         raise FuseOSError(errno.ENOSYS)
@@ -423,7 +423,7 @@ class StagFS(Operations):
         """ Reads the content of a directory in the virtual filesystem.
 
         Args:
-            path (str): The path to the directory in the virtual filesystem.
+            path (str): The path to the directory in the virtual filesystem (assuming its always a folder).
             fh (int): File handle (ignored).
 
         Yields:
