@@ -1,12 +1,32 @@
 #!/usr/bin/env python3
 
 from fuse import FUSE, FuseOSError, Operations
+import logging
 import sqlite3
 import click
 import errno
 import stat
 import sys
 import os
+
+
+# configure logger and define the decorator
+logging.basicConfig(
+    level=logging.INFO,                                   # default logging level for this script
+    format='[%(asctime)s] [%(levelname)s]\n%(message)s',  # message format
+    handlers=[logging.StreamHandler()]
+)
+
+def log_call(func):
+    def wrapper(self, *args, **kwargs):
+        try:
+            result = func(self, *args, **kwargs)
+            logging.info(f"{func.__name__}, args={args}, kwargs={kwargs}\nreturned {result!r}")
+            return result
+        except Exception as e:
+            logging.info(f"{func.__name__}, args={args}, kwargs={kwargs}\nraised {e.__class__.__name__}({errno.errorcode.get(e.errno, 'UNKNOWN')})")
+            raise
+    return wrapper
 
 
 class StagFS(Operations):
@@ -652,10 +672,16 @@ class StagFS(Operations):
 @click.command()
 @click.option(     "-i", "--init",  type=click.STRING, nargs=1, metavar="<PATH>",      help="Initialize a Stag repository")
 @click.option(     "-m", "--mount", type=click.STRING, nargs=2, metavar="<SRC> <MNT>", help="Mount a Stag repository")
+@click.option(     "-d", "--debug", is_flag=True,                                      help="Enable debug logging")
 @click.help_option("-h", "--help",                                                     help="Show help dialog")
-def main(init, mount):
+def main(init, mount, debug):
     if init and mount:
         raise click.UsageError('Cannot use -i, --init and -m, --mount together')
+
+    # set logging level
+    logging.getLogger().setLevel(logging.WARNING)  # default logging level
+    if debug:
+        logging.getLogger().setLevel(logging.INFO)
 
     # initialize a Stag repository
     if init:
