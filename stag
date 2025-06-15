@@ -176,25 +176,47 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def chmod(self, path, mode):
-        """ Changes the permissions of a given path.
+        """ Changes the permissions of path in the virtual filesystem.
 
         Args:
-            `path` (str): The path to the file or folder.
-            `mode` (int): The numeric value of the permissions.
+            path (str): The path to the file or folder.
+            mode (int): The numeric value of the permissions.
+
+        Raises:
+            FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        is_root, is_file, is_tag, is_valid = get_info(path, check_valid=True)
+
+        if is_valid:
+            basename = path.split("/")[-1]
+            os.chmod(self.src + "/".join([basename]), mode)
+        else:
+            raise FuseOSError(errno.ENOENT)
+
+        pass
 
     def chown(self, path, uid, gid):
-        """ Changes the owner of a given path.
+        """ Changes the owner of path in the virtual filesystem.
 
         Args:
-            `path` (str): The path to the file or folder.
-            `uid` (int): User ID.
-            `gid` (int): Group ID.
+            path (str): The path to the file or folder.
+            uid (int): User ID.
+            gid (int): Group ID.
+
+        Raises:
+            FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        is_root, is_file, is_tag, is_valid = get_info(path, check_valid=True)
+
+        if is_valid:
+            basename = path.split("/")[-1]
+            os.chown(self.src + "/".join([basename]), uid, gid)
+        else:
+            raise FuseOSError(errno.ENOENT)
+
+        pass
 
     def getattr(self, path, fh=None):
         """ Fetches the attributes of a file or folder in the virtual filesystem.
@@ -468,11 +490,21 @@ class StagFS(Operations):
         """ Sets the access and modified times of a file or folder.
 
         Args:
-            `path` (str): The path to a file or folder in the virtual filesystem.
-            `times`: If times is not `None`, it must be a 2-tuple of the form `(atime, mtime)` where each member is an int or float expressing seconds.
+            path (str): The path to a file or folder in the virtual filesystem.
+            times: If times is not `None`, it must be a 2-tuple of the form (atime, mtime) where each member is an int or float expressing seconds.
+
+        Raises:
+            FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        is_root, is_file, is_tag, is_valid = get_info(path, check_valid=True)
+
+        if is_valid:
+            os.utime(path, times=times)
+        else:
+            raise FuseOSError(errno.ENOENT)
+
+        pass
 
     # ---------------------------------------------------------------------------------------------------------------
     # Folder methods
