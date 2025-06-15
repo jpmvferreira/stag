@@ -31,6 +31,91 @@ def log_call(func):
 
 class StagFS(Operations):
     # ---------------------------------------------------------------------------------------------------------------
+    # Auxiliary functions
+    # ---------------------------------------------------------------------------------------------------------------
+
+    def get_info(self, path, check_valid=False):
+        """ Analyze path on virtual filesystem determine its type (root folder, file or tag) and validity.
+
+        Args:
+            path (str): The path in the virtual filesystem to analyze.
+            check_valid (bool, optional): If True checks if the path is a valid file or tag path. Defaults to False.
+
+        Returns:
+            If check_valid is False, returns a tuple (is_root, is_file, is_tag):
+                - is_root (bool): True if the path is the root directory.
+                - is_file (bool): True if the path corresponds to a file.
+                - is_tag (bool): True if the path corresponds to a tag (directory).
+            If check_valid is True, returns a tuple (is_root, is_file, is_tag, is_valid):
+                - is_valid (bool): True if the path is a valid file or tag path, False otherwise.
+        """
+
+        # split `path` to get the basename
+        basename = path.split("/")[-1]
+
+        # if we're dealing with the root directory
+        if basename == "":
+            is_root = True
+            is_file = False
+            is_tag  = False
+
+            if check_valid:
+                is_valid = True
+                return is_root, is_file, is_tag, is_valid
+            else:
+                return is_root, is_file, is_tag
+
+        # otherwise check if its either a file or a tag
+        is_root = False
+        is_file = os.path.isfile(f"{self.src}/{basename}")
+        is_tag  = os.path.isdir(f"{self.src}/{basename}")
+
+        # if its neither, it doesn't exist and we return here
+        if (not is_file) and (not is_tag):
+            if check_valid:
+                is_valid = False
+                return is_root, is_file, is_tag, is_valid
+            else:
+                return is_root, is_file, is_tag
+
+        # if is a file
+        # the file is valid if its path is a subset of its corresponding tags
+        if is_file:
+            if check_valid:
+                res = self.cur.execute(f"SELECT tags FROM files WHERE path LIKE '{basename}'").fetchone()
+                res_tags = [tag for tag in res[0].split("/") if tag]
+
+                tags = path.split("/")[1:-1]
+
+                is_valid = False
+                if (set(tags) <= set(res_tags)):
+                    is_valid = True
+
+                return is_root, is_file, is_tag, is_valid
+            else:
+                return is_root, is_file, is_tag
+
+        # if is a tag
+        # the tag is valid if there is at least one file inside the provided path or is located in the root dir
+        if is_tag:
+            if check_valid:
+                is_valid = False
+                tags = path.split("/")[1:]
+
+                if len(tags) == 1:
+                    is_valid = True
+
+                else:
+                    query = "SELECT path, tags FROM files WHERE " + " AND ".join([f"tags LIKE '%/{tag}/%'" for tag in tags])
+                    res = self.cur.execute(query).fetchone()
+                    if res:
+                        is_valid = True
+
+                return is_root, is_file, is_tag, is_valid
+            else:
+                return is_root, is_file, is_tag
+
+    # ---------------------------------------------------------------------------------------------------------------
     # Initialization and destruction
     # ---------------------------------------------------------------------------------------------------------------
 
