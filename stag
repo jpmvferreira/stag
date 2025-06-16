@@ -164,14 +164,16 @@ class StagFS(Operations):
     # ---------------------------------------------------------------------------------------------------------------
 
     def access(self, path, mode):
-        """ Determines the accessibility of a file or folder.
+        """ Check if a file or directory is accessible with the given mode.
 
         According to the manpage of the function `access`, the usage of this function is discouraged and may be formally deprecated in the future.
 
         Args:
-            `path` (str): The path to the file or folder in the virtual filesystem.
-            `mode` (int): The mode to check if the `path` is accesible.
+            path (str): The path to the file or directory in the virtual filesystem.
+            mode (int): The access mode to check (e.g., os.R_OK, os.W_OK, os.X_OK).
         """
+
+        # TODO
 
         raise FuseOSError(errno.ENOSYS)
 
@@ -342,7 +344,7 @@ class StagFS(Operations):
     def link(self, target, source):
         """ Creates a hardlink between two paths.
 
-        Symlinks are not supported in this filesystem and this function will always raise FuseOSError.
+        Hard links are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             `target` (str): Target location for the hardlink in the virtual filesystem.
@@ -415,12 +417,14 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def rename(self, old, new):
-        """ Moves (or, in particular, renames) a file or folder.
+        """ Rename a file or directory in the virtual filesystem.
 
         Args:
-            `old` (str): The path to the file or directory.
-            `new` (str): The new path to the file or directory.
+            old (str): The current path to the file or directory in the virtual filesystem.
+            new (str): The new path for the file or directory in the virtual filesystem.
         """
+
+        # TODO
 
         raise FuseOSError(errno.ENOSYS)
 
@@ -463,26 +467,25 @@ class StagFS(Operations):
         )
 
     def symlink(self, name, target):
-        """ Creates a symlink.
-
-        Symlinks are not supported in this filesystem and this function will always raise FuseOSError.
+        """ Creates a symlink in the virtual filesystem, used to add tag to file.
 
         Args:
             `name` (str): The path of the symlink.
             `target` (str): The path which the symlink will point to.
-
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
         """
+
+        # TODO
 
         raise FuseOSError(errno.ENOSYS)
 
     def unlink(self, path):
-        """ Deletes a file.
+        """ Removes a file in the virtual filesystem.
 
         Args:
             `path` (str): The path to the file to remove.
         """
+
+        # TODO
 
         raise FuseOSError(errno.ENOSYS)
 
@@ -659,25 +662,22 @@ class StagFS(Operations):
     # ---------------------------------------------------------------------------------------------------------------
 
     def create(self, path, mode, fi=None):
-        """Create a new file in the virtual filesystem.
-
-        File methods are not supported in this filesystem and this function will always raise FuseOSError.
+        """ Create a file in the virtual filesystem.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
             mode (int): The permissions mode to set on the new file.
             fi (object, optional): File info object (may be None).
-
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
         """
+
+        # TODO
 
         raise FuseOSError(errno.ENOSYS)
 
     def flush(self, path, fh):
-        """Flush any cached information for the specified file.
+        """ Flush any cached information for the specified file.
 
-        File methods are not supported in this filesystem and this function will always raise FuseOSError.
+        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -690,9 +690,9 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def fsync(self, path, fdatasync, fh):
-        """Synchronize file contents and metadata to disk.
+        """ Synchronize file contents and metadata to disk.
 
-        File methods are not supported in this filesystem and this function will always raise FuseOSError.
+        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -706,9 +706,9 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def open(self, path, flags):
-        """Open a file for reading or writing.
+        """ Open a file for reading or writing.
 
-        File methods are not supported in this filesystem and this function will always raise FuseOSError.
+        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -721,9 +721,9 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def read(self, path, length, offset, fh):
-        """Read data from an open file.
+        """ Read data from an open file.
 
-        File methods are not supported in this filesystem and this function will always raise FuseOSError.
+        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -738,9 +738,9 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def release(self, path, fh):
-        """Release an open file (close it).
+        """ Release an open file (close it).
 
-        File methods are not supported in this filesystem and this function will always raise FuseOSError.
+        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -753,9 +753,9 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def truncate(self, path, length, fh=None):
-        """Resize a file to a specified length.
+        """ Resize a file to a specified length.
 
-        File methods are not supported in this filesystem and this function will always raise FuseOSError.
+        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -769,9 +769,9 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def write(self, path, buf, offset, fh):
-        """Write data to an open file.
+        """ Write data to an open file.
 
-        File methods are not supported in this filesystem and this function will always raise FuseOSError.
+        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
