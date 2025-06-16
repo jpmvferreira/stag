@@ -1,5 +1,9 @@
-# personal files
-personal/
+# personal notes
+/notes/
 
-# tests are currently performed manually
-tests/
+# tests are currently performed manually, will be un-ignored once automated
+/tests/
+
+# ignored temporarily, used to trace FUSE filesystem calls
+trace-fuse/
+ 
