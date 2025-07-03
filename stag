@@ -21,10 +21,10 @@ def log_call(func):
     def wrapper(self, *args, **kwargs):
         try:
             result = func(self, *args, **kwargs)
-            logging.info(f"{func.__name__}, args={args}, kwargs={kwargs}\nreturned {result!r}")
+            logging.info(f"{func.__name__}, args={args}, kwargs={kwargs}\nreturned {result!r}\n")
             return result
         except Exception as e:
-            logging.info(f"{func.__name__}, args={args}, kwargs={kwargs}\nraised {e.__class__.__name__}({errno.errorcode.get(e.errno, 'UNKNOWN')})")
+            logging.info(f"{func.__name__}, args={args}, kwargs={kwargs}\nraised {e.__class__.__name__}({errno.errorcode.get(e.errno, 'UNKNOWN')})\n")
             raise
     return wrapper
 
