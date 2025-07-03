@@ -296,7 +296,6 @@ class StagFS(Operations):
                 at = dict((key, getattr(st, key)) for key in (
                     'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
                 ))
-                at['st_mode'] = at['st_mode'] | stat.S_IFLNK  # make every file look as a symlink
             else:
                 raise FuseOSError(errno.ENOENT)
 
@@ -389,17 +388,16 @@ class StagFS(Operations):
     def readlink(self, path):
         """ Return the target path of a symlink in the virtual filesystem.
 
+        Symlinks are not supported in this filesystem and this function will always raise FuseOSError.
+
         Args:
             path (str): The path to the symlink in the virtual filesystem.
 
-        Returns:
-            str: The path to the corresponding real file in the source directory.
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
-        # split `path` to get the basename
-        basename = path.split("/")[-1]
-
-        return self.src + "/" + basename
+        raise FuseOSError(errno.ENOSYS)
 
     def removexattr(self, path, name):
         """Remove an extended attribute from a file or directory.
@@ -467,14 +465,17 @@ class StagFS(Operations):
         )
 
     def symlink(self, name, target):
-        """ Creates a symlink in the virtual filesystem, used to add tag to file.
+        """ Creates a symlink in the virtual filesystem.
+
+        Symlinks are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             `name` (str): The path of the symlink.
             `target` (str): The path which the symlink will point to.
-        """
 
-        # TODO
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
+        """
 
         raise FuseOSError(errno.ENOSYS)
 
@@ -664,46 +665,63 @@ class StagFS(Operations):
     def create(self, path, mode, fi=None):
         """ Create a file in the virtual filesystem.
 
+        This function is also responsible for adding the newly created file to the database, along with its tags.
+
         Args:
             path (str): Path to the file in the virtual filesystem.
             mode (int): The permissions mode to set on the new file.
             fi (object, optional): File info object (may be None).
+
+        Returns:
+            int: A file descriptor for the newly created file obtained from os.open.
         """
 
-        # TODO
+        *tags, basename = path.split("/")
+        real_path = self.src + "/" + basename
 
-        raise FuseOSError(errno.ENOSYS)
+        # first element in tags is always an empty string, remove it
+        tags = tags[1:]
+
+        # a string with the tags to the add to the database
+        if tags:
+            tags = "/" + "//".join(tags) + "/"
+        else:
+            tags = ""
+
+        # add the file to the database
+        self.cur.execute(f"INSERT INTO files VALUES ('{basename}', '{tags}')")
+        self.con.commit()
+
+        return os.open(real_path, os.O_WRONLY | os.O_CREAT, mode)
 
     def flush(self, path, fh):
         """ Flush any cached information for the specified file.
-
-        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
             fh (int): File handle.
 
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
+        Returns:
+            int: Result of os.fsync (0 on success).
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        return os.fsync(fh)
 
     def fsync(self, path, fdatasync, fh):
         """ Synchronize file contents and metadata to disk.
 
-        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
+        This function will always pass its arguments to flush.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
             fdatasync (bool): If True, only synchronize user data, not metadata.
             fh (int): File handle.
 
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
+        Returns:
+            int: Result of flush (0 on success).
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        return self.flush(path, fh)
 
     def open(self, path, flags):
         """ Open a file for reading or writing.
@@ -714,11 +732,14 @@ class StagFS(Operations):
             path (str): Path to the file in the virtual filesystem.
             flags (int): Flags indicating access mode and options.
 
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
+        Returns:
+            int: File descriptor for the opened file obtained from os.open.
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        basename = path.split("/")[-1]
+        real_path = self.src + "/" + basename
+
+        return os.open(real_path, flags)
 
     def read(self, path, length, offset, fh):
         """ Read data from an open file.
@@ -731,11 +752,13 @@ class StagFS(Operations):
             offset (int): Offset in the file to start reading from.
             fh (int): File handle.
 
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
+        Returns:
+            bytes: Data read from the file obtained from os.read.
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        os.lseek(fh, offset, os.SEEK_SET)
+
+        return os.read(fh, length)
 
     def release(self, path, fh):
         """ Release an open file (close it).
@@ -746,11 +769,11 @@ class StagFS(Operations):
             path (str): Path to the file in the virtual filesystem.
             fh (int): File handle.
 
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
+        Returns:
+            int: Result of os.close (None on success).
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        return os.close(fh)
 
     def truncate(self, path, length, fh=None):
         """ Resize a file to a specified length.
@@ -762,11 +785,17 @@ class StagFS(Operations):
             length (int): The new size of the file in bytes.
             fh (int, optional): File handle (may be None).
 
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
+        Returns:
+            None
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        basename = path.split("/")[-1]
+        real_path = self.src + "/" + basename
+
+        with open(real_path, 'r+') as f:
+            f.truncate(length)
+
+        pass
 
     def write(self, path, buf, offset, fh):
         """ Write data to an open file.
@@ -779,11 +808,13 @@ class StagFS(Operations):
             offset (int): Offset in the file to start writing at.
             fh (int): File handle.
 
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
+        Returns:
+            int: Number of bytes written obtained from os.write.
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        os.lseek(fh, offset, os.SEEK_SET)
+
+        return os.write(fh, buf)
 
 
 @click.command()
