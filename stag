@@ -483,12 +483,25 @@ class StagFS(Operations):
         """ Removes a file in the virtual filesystem.
 
         Args:
-            `path` (str): The path to the file to remove.
+            path (str): The path to the file to remove.
+
+        Returns:
+            None: Returns None on successful removal.
+
+        Raises:
+            FuseOSError: If the path does not point to a valid file (errno.ENOENT).
         """
 
-        # TODO
+        basename = path.split("/")[-1]
+        is_root, is_file, is_tag, is_valid = self.get_info(path, check_valid=True)
 
-        raise FuseOSError(errno.ENOSYS)
+        # assuming that path always points to a file, we only need to check whether its a valid path
+        if is_valid:
+            self.cur.execute(f"DELETE FROM files WHERE path = '{basename}'")
+            self.con.commit()
+            return os.unlink(self.src + "/" + basename)
+
+        raise FuseOSError( errno.ENOENT)
 
     def utimens(self, path, times=None):
         """ Sets the access and modified times of a file or folder.
