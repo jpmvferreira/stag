@@ -492,16 +492,27 @@ class StagFS(Operations):
             FuseOSError: If the path does not point to a valid file (errno.ENOENT).
         """
 
-        basename = path.split("/")[-1]
+        *tags, basename = path.split("/")[1:]
+        real_path = self.src + "/" + basename
+
         is_root, is_file, is_tag, is_valid = self.get_info(path, check_valid=True)
 
-        # assuming that path always points to a file, we only need to check whether its a valid path
-        if is_valid:
+        # check if the path to the file is valid
+        if not is_valid:
+            raise FuseOSError( errno.ENOENT)
+
+        # remove tags or file depending on where the removal was issued
+        if tags:
+            for tag in tags:
+                self.cur.execute(f"UPDATE files SET tags = REPLACE(tags, '/{tag}/', '') WHERE path = '{basename}'")
+            self.con.commit()
+
+        else:
             self.cur.execute(f"DELETE FROM files WHERE path = '{basename}'")
             self.con.commit()
-            return os.unlink(self.src + "/" + basename)
+            os.unlink(real_path)
 
-        raise FuseOSError( errno.ENOENT)
+        return
 
     def utimens(self, path, times=None):
         """ Sets the access and modified times of a file or folder.
