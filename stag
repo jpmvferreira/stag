@@ -447,10 +447,10 @@ class StagFS(Operations):
     def statfs(self, path):
         """ Get the filesystem statistics.
 
-        Always returns the statistics of the filesystem where the Stag repository is in.
+        Returns the statistics of the filesystem where the Stag repository is located.
 
         Args:
-            `path` (str): The path to the file or folder.
+            path (str): The path to the file or folder.
 
         Returns:
             dict: A dictionary containing filesystem statistics.
@@ -496,6 +496,9 @@ class StagFS(Operations):
         Args:
             path (str): The path to a file or folder in the virtual filesystem.
             times: If times is not `None`, it must be a 2-tuple of the form (atime, mtime) where each member is an int or float expressing seconds.
+
+        Returns:
+            None
 
         Raises:
             FuseOSError: If the path does not exist (errno.ENOENT).
@@ -625,7 +628,7 @@ class StagFS(Operations):
         """ Deletes a folder in the virtual filesystem.
 
         Args:
-            `path` (str): The location of the folder to remove (assuming its always a folder).
+            path (str): The path of the folder to remove.
 
         Raises:
             FuseOSError: errno.ENOENT if it doesn't point to a valid path.
