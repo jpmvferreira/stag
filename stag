@@ -188,11 +188,11 @@ class StagFS(Operations):
             FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        is_root, is_file, is_tag, is_valid = get_info(path, check_valid=True)
+        is_root, is_file, is_tag, is_valid = self.get_info(path, check_valid=True)
 
         if is_valid:
             basename = path.split("/")[-1]
-            os.chmod(self.src + "/".join([basename]), mode)
+            os.chmod(self.src + "/" + basename, mode)
         else:
             raise FuseOSError(errno.ENOENT)
 
@@ -210,11 +210,11 @@ class StagFS(Operations):
             FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        is_root, is_file, is_tag, is_valid = get_info(path, check_valid=True)
+        is_root, is_file, is_tag, is_valid = self.get_info(path, check_valid=True)
 
         if is_valid:
             basename = path.split("/")[-1]
-            os.chown(self.src + "/".join([basename]), uid, gid)
+            os.chown(self.src + "/" + basename, uid, gid)
         else:
             raise FuseOSError(errno.ENOENT)
 
