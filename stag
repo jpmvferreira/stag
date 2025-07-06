@@ -34,7 +34,7 @@ class StagFS(Operations):
     # Auxiliary functions
     # ---------------------------------------------------------------------------------------------------------------
 
-    def get_info(self, path, check_valid=False):
+    def __get_info(self, path, check_valid=False):
         """ Analyze path on virtual filesystem determine its type (root folder, file or tag) and validity.
 
         Args:
@@ -188,7 +188,7 @@ class StagFS(Operations):
             FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        is_root, is_file, is_tag, is_valid = self.get_info(path, check_valid=True)
+        is_root, is_file, is_tag, is_valid = self.__get_info(path, check_valid=True)
 
         if is_valid:
             basename = path.split("/")[-1]
@@ -210,7 +210,7 @@ class StagFS(Operations):
             FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        is_root, is_file, is_tag, is_valid = self.get_info(path, check_valid=True)
+        is_root, is_file, is_tag, is_valid = self.__get_info(path, check_valid=True)
 
         if is_valid:
             basename = path.split("/")[-1]
@@ -495,7 +495,7 @@ class StagFS(Operations):
         *tags, basename = path.split("/")[1:]
         real_path = self.src + "/" + basename
 
-        is_root, is_file, is_tag, is_valid = self.get_info(path, check_valid=True)
+        is_root, is_file, is_tag, is_valid = self.__get_info(path, check_valid=True)
 
         # check if the path to the file is valid
         if not is_valid:
@@ -528,7 +528,7 @@ class StagFS(Operations):
             FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        is_root, is_file, is_tag, is_valid = get_info(path, check_valid=True)
+        is_root, is_file, is_tag, is_valid = __get_info(path, check_valid=True)
 
         if is_valid:
             os.utime(path, times=times)
