@@ -17,13 +17,15 @@ Key features are:
 
 # Installation
 
-The requirements to run Stag are:
+The dependencies to run Stag are:
 
 - Python (version 3)
 - [Click](https://click.palletsprojects.com/en/stable/)
 - [fusepy](https://github.com/fusepy/fusepy)
 
-To install Stag, download the Python script to your machine
+## Manual Installation
+
+After ensuring the dependencies are satisfied, download the Python script to your machine, e.g. using `wget`
 
 ```console
 $ wget https://github.com/jpmvferreira/stag/blob/master/stag
@@ -41,12 +43,6 @@ and place it somewhere in your `$PATH`, e.g.
 $ mv stag ~/.local/bin
 ```
 
-Finally, check if the program is installed successfully by running
-
-```console
-$ stag --help
-```
-
 <!--- TODO: AUR -->
 
 # Usage
@@ -62,19 +58,49 @@ TODO: guide que mostra todas as funcionalidades presentes no Stag com uma breve 
 - remover ficheiros
  -->
 
-# Similar Projects
+# Motivation
 
-As far as I know, there is only one project similar to this: [TMSU](https://tmsu.org/). It has more features than Stag and is actively maintained. However, it does more than what I need it to do, I don't like the folder structure and the CLI was quite complicated. It is also written in Go, which I am not familiar with.
+Ever you ever started doing some spring cleaning and realized that
 
-Therefore, I decided to make my own version of TMSU, with ~~blackjack~~ smaller codebase and ~~hookers~~ less features. This makes the program more constrained, while still doing what I want it to do, more user friendly and easier to maintain.
+```console
+$ find wallpapers -type f | wc -l
+1603
+```
+
+and as if this is not already bad enough you stumbled across
+
+```console
+$ find memes -type f | wc -l
+1377
+```
+
+Yeah... But, you know what could help you sort all of this mess? That's right, Tags! So I just need to find a program that:
+
+1) Tags file(s);
+2) Integrates with the filesystem to browse the files and tags;
+3) Uses terminal utilities to interact with files and tags.
+
+As far as I know, there is only one project that comes close to this: [TMSU](https://tmsu.org/). However, I don't like the folder structure and the CLI was quite complicated. Besides, the interaction via filesystem is suboptimal to me. It is also written in Go, which I am not familiar with.
+
+Therefore, I decided to make my own version of TMSU, with ~~blackjack~~ smaller codebase and ~~hookers~~ better filesystem integration.
 
 # Contributing
 
 This is a small program developed by somebody who is not an experienced programmer. If you have any comments, feedback, suggestions or even feature requests, don't hesitate in opening a ticket or a discussion in the Github repository.
 
+<!--- alguns comentarios para quem pode querer contribuir com codigo, que ha basicamente dois ficheiros: o stag com o filesystem e o test_stag com os tests, que usa pytest -->
+
 # References
 
-<!--- TODO -->
+The **fusepy** Github repository:
+
+- https://github.com/fusepy/fusepy
+- Mainly the file `fuse.py` where the FUSE object is implemented
+
+The **libfuse** documentation:
+
+- https://libfuse.github.io/doxygen/index.html
+- Emphasis to the file where the operations available in a FUSE filesystem are defined (Data Structures > fuse_operations)
 
 # License
-[MIT](./LICENSE.md).
+[MIT](./LICENSE.md)
