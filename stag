@@ -692,8 +692,6 @@ class StagFS(Operations):
     def create(self, path, mode, fi=None):
         """ Create a file in the virtual filesystem.
 
-        This function is also responsible for adding the newly created file to the database, along with its tags.
-
         Args:
             path (str): Path to the file in the virtual filesystem.
             mode (int): The permissions mode to set on the new file.
@@ -753,8 +751,6 @@ class StagFS(Operations):
     def open(self, path, flags):
         """ Open a file for reading or writing.
 
-        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
-
         Args:
             path (str): Path to the file in the virtual filesystem.
             flags (int): Flags indicating access mode and options.
@@ -770,8 +766,6 @@ class StagFS(Operations):
 
     def read(self, path, length, offset, fh):
         """ Read data from an open file.
-
-        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -790,8 +784,6 @@ class StagFS(Operations):
     def release(self, path, fh):
         """ Release an open file (close it).
 
-        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
-
         Args:
             path (str): Path to the file in the virtual filesystem.
             fh (int): File handle.
@@ -804,8 +796,6 @@ class StagFS(Operations):
 
     def truncate(self, path, length, fh=None):
         """ Resize a file to a specified length.
-
-        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -826,8 +816,6 @@ class StagFS(Operations):
 
     def write(self, path, buf, offset, fh):
         """ Write data to an open file.
-
-        File methods except for create are not supported in this filesystem and this function will always raise FuseOSError.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
