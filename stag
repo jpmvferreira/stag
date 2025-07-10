@@ -852,11 +852,13 @@ def main(init, mount, debug):
 
         # check if `init` exists
         if not os.path.isdir(init):
-            raise Exception(f"folder {init} does not exist")
+            print(f"folder {init} does not exist")
+            sys.exit(1)
 
         # check if `init` is empty
         if os.listdir(init):
-            raise Exception(f"folder {init} is not empty")
+            print(f"folder {init} is not empty")
+            sys.exit(1)
 
         # initialize the database
         con = sqlite3.connect(f"{init}/stag.sql")
@@ -883,20 +885,23 @@ def main(init, mount, debug):
 
         # check if `src` is a Stag repository
         if not os.path.isfile(db):
-            raise Exception(f"database file not found in {db}")
+            print(f"database file not found in {db}")
+            sys.exit(1)
 
         # check if `mnt` exists
         if not os.path.isdir(mnt):
-            raise Exception(f"folder {mnt} does not exist")
+            print(f"folder {mnt} does not exist")
+            sys.exit(1)
 
         # check if `mnt` is empty
         if os.listdir(mnt):
-            raise Exception(f"folder {mnt} is not empty")
+            print(f"folder {mnt} is not empty")
+            sys.exit(1)
 
         # mount the filesystem
         FUSE(StagFS(files,db), mnt, nothreads=True, foreground=True)
 
-    return 0
+    return
 
 
 if __name__ == '__main__':
