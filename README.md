@@ -5,7 +5,7 @@
 <br/>
 
 # Overview
-**Stag** (**S**imple **Tag**ger) is a FUSE-based filesystem that upgrades a hierarchical filesystem to support a tag-based folder structure. It turns tags into folders, while remaining compatible with a standard Unix utilities and file managers.
+**Stag** (**S**imple **Tag**ger) is a FUSE-based filesystem that upgrades your filesystem to support a tag-based structure. It turns tags into folders and remains compatible with a standard Unix utilities and file managers.
 
 Key features are:
 
@@ -19,7 +19,7 @@ Key features are:
 
 The dependencies to run Stag are:
 
-- Python (version 3)
+- [Python](https://www.python.org/) (version 3)
 - [Click](https://click.palletsprojects.com/en/stable/)
 - [fusepy](https://github.com/fusepy/fusepy)
 
@@ -67,20 +67,20 @@ $ find wallpapers -type f | wc -l
 1603
 ```
 
-and as if this is not already bad enough you stumbled across
+and, as if this is not bad enough already, you stumbled across
 
 ```console
 $ find memes -type f | wc -l
 1377
 ```
 
-Yeah... But, you know what could help you sort all of this mess? That's right, Tags! So I just need to find a program that:
+Yeah... But, you know what could help you sort all of this mess? That's right: ~~stop hoarding~~ Tags! So I just need to find a program that:
 
 1) Tags file(s);
 2) Integrates with the filesystem to browse the files and tags;
 3) Uses terminal utilities to interact with files and tags.
 
-As far as I know, there is only one project that comes close to this: [TMSU](https://tmsu.org/). However, I don't like the folder structure and the CLI was quite complicated. Besides, the interaction via filesystem is suboptimal to me. It is also written in Go, which I am not familiar with.
+As far as I know, there is only one project that comes close to this: [TMSU](https://tmsu.org/). However, I don't like the folder structure and the CLI was quite complicated. Besides, the interaction via filesystem is lacking to me. It is also written in Go, which I am not familiar with.
 
 Therefore, I decided to make my own version of TMSU, with ~~blackjack~~ smaller codebase and ~~hookers~~ better filesystem integration.
 
