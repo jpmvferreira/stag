@@ -147,15 +147,41 @@ class TestStag:
 
     # remove tag(s) from file(s)
     def test_rm2(self):
+        fs, tmpdir, mnt = self.__create_stag()
+        p = self.__mount_stag(fs, mnt)
 
-        # TODO: remove some tags from a file and the check subfolders to see if its gone but still exists in the root repo
+        os.system(f"rm {mnt}/city/fuji.txt")
+        ls = os.popen(f"ls {mnt}").read()
+        ls_city = os.popen(f"ls {mnt}/city").read()
+        ls_mountains = os.popen(f"ls {mnt}/mountains").read()
+
+        try:
+            assert "fuji.txt" in ls
+            assert "fuji.txt" not in ls_city
+            assert "fuji.txt" in ls_mountains
+
+        finally:
+            self.__unmount_stag(p)
+            self.__remove_stag(tmpdir)
 
         pass
 
     # remove tag(s) from the repository
     def test_rmdir(self):
+        fs, tmpdir, mnt = self.__create_stag()
+        p = self.__mount_stag(fs, mnt)
 
-        # TODO: remove a tag or two from the directory, check root folder and subfolders
+        os.system(f"rmdir {mnt}/city")
+        ls = os.popen(f"ls {mnt}").read()
+        ls_mountains = os.popen(f"ls {mnt}/mountains").read()
+
+        try:
+            assert "city" not in ls
+            assert "city" not in ls_mountains
+
+        finally:
+            self.__unmount_stag(p)
+            self.__remove_stag(tmpdir)
 
         pass
 
