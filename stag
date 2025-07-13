@@ -221,7 +221,7 @@ class StagFS(Operations):
         pass
 
     def getattr(self, path, fh=None):
-        """ Fetches the attributes of a file or folder in the virtual filesystem.
+        """ Fetches the attributes of a path in the virtual filesystem.
 
         Args:
             path (str): The path to the file or folder in the virtual filesystem.
@@ -234,65 +234,36 @@ class StagFS(Operations):
             FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        # split `path` to get the basename
-        basename = path.split("/")[-1]
+        *tags, basename = path.split("/")[1:]
+        real_path = self.src + "/" + basename
 
-        # if `path` is an empty string, it corresponds to the root directory of the mount dir
-        # if this is the case, we fetch the attributes of the source dir
+        # if basename is an empty string then we are in the root directory
+        # return the attributes of the source dir
         if basename == "":
             st = os.lstat(self.src)
             at = dict((key, getattr(st, key)) for key in (
                 'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
             ))
 
-        # if it's a tag
-        # we need to check if `path` is valid, and this implies thatthere is at least one file with these tags
-        elif os.path.isdir(self.src + "/" + basename):
-            tags = path.split("/")[1:]
+        # if basename corresponds to a tag always return the attributes of the folder
+        # do this even if the current combination of folder does not exist
+        # this is important for symlink to work as a way to add tags to files
+        elif os.path.isdir(real_path):
+            st = os.lstat(real_path)
+            at = dict((key, getattr(st, key)) for key in (
+                'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
+            ))
 
-            # if there is only on tag in `tags`, its itself, and we can just check directly whether the folder exists
-            if len(tags) == 1:
-                try:
-                    st = os.lstat(f"{self.src}/{basename}")
-                    at = dict((key, getattr(st, key)) for key in (
-                        'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
-                    ))
-                except FileNotFoundError:
-                    raise FuseOSError(errno.ENOENT)
-                except Exception:
-                    raise FuseOSError(errno.EINVAL)
-
-            else:
-                conditions = []
-                for tag in tags:
-                    conditions.append(f"tags LIKE '%/{tag}/%'")
-                query = "SELECT path, tags FROM files WHERE " + " AND ".join(conditions)
-
-                res = self.cur.execute(query).fetchone()
-
-                # if there is at least one file, then this is a valid path
-                # otherwise, it isn't, and it doesn't exist
-                if res:
-                    st = os.lstat(self.src + "/" + basename)
-                    at = dict((key, getattr(st, key)) for key in (
-                        'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
-                    ))
-                else:
-                    raise FuseOSError(errno.ENOENT)
-
-        # if it's a file
-        elif os.path.isfile(self.src + "/" + basename):
+        # if it's a file, check if the subfolder it's in is a valid combination of tags
+        elif os.path.isfile(real_path):
             # fetch the tags associated with this file in the database
             res = self.cur.execute(f"SELECT tags FROM files WHERE path LIKE '{basename}'").fetchone()
             res_tags = [tag for tag in res[0].split("/") if tag]
 
-            # fetch the tags coming from the path
-            tags = path.split("/")[1:-1]
-
             # if the tags on the requested path is a subset of the tags on the database, then the path is valid
             # otherwise, it is not a valid path, therefore there is no file at the specified location
             if (set(tags) <= set(res_tags)):
-                st = os.lstat(self.src + "/" + basename)
+                st = os.lstat(real_path)
                 at = dict((key, getattr(st, key)) for key in (
                     'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
                 ))
@@ -464,18 +435,52 @@ class StagFS(Operations):
             )
         )
 
-    def symlink(self, name, target):
+    def symlink(self, source, target):
         """ Creates a symlink in the virtual filesystem.
 
         Args:
-            name (str): The path of the symlink.
-            target (str): The path which the symlink will point to.
-
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
+            source (str): Path of the symlink.
+            target (str): Path which the symlink will point to.
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        # for some reason target does not start with "/", add it for consistency
+        target = "/" + target
+
+        # fetch tags, real path and basenames
+        *new_tags, source_name = source.split("/")[1:]
+
+        *_, target_name = target.split("/")[1:]
+        real_path = self.src + "/" + target_name
+
+        # source and target must have the same name
+        if source_name != target_name:
+            raise FuseOSError(errno.ENOENT)
+
+        # check if the target path is a file and is valid
+        is_root, is_file, is_tag, is_valid = self.__get_info(target_name, check_valid=True)
+
+        if not is_valid:
+            raise FuseOSError(errno.ENOENT)
+
+        if is_root or is_tag:
+            raise FuseOSError(errno.EISDIR)
+
+        # every tag in new_tags must exist
+        # NOTE: I think this check is pointless because ln always makes a call to getattr before calling symlink, implying the folder already exists
+        for tag in new_tags:
+            if not os.path.isdir(self.src + "/" + tag):
+                raise FuseOSError(errno.ENOENT)
+
+        # get current tags and add the ones from new_tags
+        res = self.cur.execute(f"SELECT tags FROM files WHERE path LIKE '{target_name}'").fetchone()
+        tags = set([tag for tag in res[0].split("/") if tag] + new_tags)
+        tags = "/" + "//".join(tags) + "/"
+
+        # write it to the database
+        self.cur.execute(f"UPDATE files SET tags = '{tags}' WHERE path = '{target_name}'")
+        self.con.commit()
+
+        return
 
     def unlink(self, path):
         """ Removes a file in the virtual filesystem.
