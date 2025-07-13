@@ -43,7 +43,7 @@ and place it somewhere in your `$PATH`, e.g.
 $ mv stag ~/.local/bin
 ```
 
-<!--- TODO: AUR -->
+<!--- TODO: AUR, criar stag-git porque nao tenho versoes -->
 
 # Usage
 
@@ -88,7 +88,7 @@ Therefore, I decided to make my own version of TMSU, with ~~blackjack~~ smaller 
 
 This is a small program developed by somebody who is not an experienced programmer. If you have any comments, feedback, suggestions or even feature requests, don't hesitate in opening a ticket or a discussion in the Github repository.
 
-<!--- alguns comentarios para quem pode querer contribuir com codigo, que ha basicamente dois ficheiros: o stag com o filesystem e o test_stag com os tests, que usa pytest -->
+If you would like to submit code, you will need basic knowledge of Python, SQL and FUSE. Both the CLI and the filesystem are implemented in the file [stag](./stag). After making any change there, make sure it passes the tests. The test units use [pytest](https://docs.pytest.org/en/stable/).
 
 # References
 
