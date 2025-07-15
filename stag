@@ -120,51 +120,68 @@ class StagFS(Operations):
     # ---------------------------------------------------------------------------------------------------------------
 
     def __init__(self, src, db):
-        """Called on object initialization.
+        """ Called on object initialization. Connects to the SQL database
 
         Args:
             src (str): Path to the directory containing the real files.
             db (str): Path to the SQLite database file.
+
+        Returns:
+            None
         """
 
         self.src = src
         self.con = sqlite3.connect(db)
         self.cur = self.con.cursor()
 
+        return
+
     def __del__(self):
-        """Called on object destruction.
+        """ Called on object destruction. Closes the connection to the SQL database.
+
+        Args:
+            None
+
+        Returns:
+            None
         """
 
         self.con.close()
 
-        pass
+        return
 
     def init(self, path):
-        """Called on filesystem initialization.
+        """Called on filesystem initialization. Doesn't do anything at the moment.
 
         This function must be used instead of `__init__` if you start threads on initialization.
 
         Args:
-            path (str): Is always `"/"`.
+            path (str): Is always /.
+
+        Returns:
+            None
         """
 
-        pass
+        return
 
     def destroy(self, path):
-        """Called on filesystem destruction.
+        """Called on filesystem destruction. Closes the connection to the SQL database
 
         Args:
-            path (str): Is always `"/"`.
+            path (str): Is always /.
+
+        Returns:
+            None
         """
 
-        pass
+        return
 
     # ---------------------------------------------------------------------------------------------------------------
     # Filesystem methods
     # ---------------------------------------------------------------------------------------------------------------
 
     def access(self, path, mode):
-        """ Check if a file or directory is accessible with the given mode.
+        """ Check if path is accessible with the given mode.
 
         According to the manpage of the function `access`, the usage of this function is discouraged and may be formally deprecated in the future.
 
@@ -178,7 +195,7 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def chmod(self, path, mode):
-        """ Changes the permissions of path in the virtual filesystem.
+        """ Update the permissions in the virtual and host filesystem.
 
         Args:
             path (str): The path to the file or folder.
@@ -196,10 +213,10 @@ class StagFS(Operations):
         else:
             raise FuseOSError(errno.ENOENT)
 
-        pass
+        return
 
     def chown(self, path, uid, gid):
-        """ Changes the owner of path in the virtual filesystem.
+        """ Change the owner in the virtual and host filesystem.
 
         Args:
             path (str): The path to the file or folder.
@@ -218,10 +235,10 @@ class StagFS(Operations):
         else:
             raise FuseOSError(errno.ENOENT)
 
-        pass
+        return
 
     def getattr(self, path, fh=None):
-        """ Fetches the attributes of a path in the virtual filesystem.
+        """ Fetches the attributes of a path in the virtual filesystem, returning the attributes of the corresponding path in the host file system.
 
         Args:
             path (str): The path to the file or folder in the virtual filesystem.
@@ -277,7 +294,7 @@ class StagFS(Operations):
         return at
 
     def getxattr(self, path, name, position=0):
-        """Get the value of an extended attribute for a file or directory.
+        """Get the value of an extended attribute for path.
 
         Extended attributes are not supported in this filesystem and this function will always raise FuseOSError.
 
@@ -312,7 +329,7 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def link(self, source, target):
-        """ Creates a hardlink between two paths in the virtual filesystem. Corresponds to adding a tag to a file.
+        """ Creates a hardlink in the virtual filesystem. Used to add tags to a file.
 
         Args:
             source (str): Path of the link.
@@ -418,7 +435,7 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def rename(self, old, new):
-        """ Rename a file or directory in the virtual filesystem.
+        """ Rename a file or directory in the virtual filesystem. Used to add and remove tags from a file.
 
         Args:
             old (str): The current path to the file or directory in the virtual filesystem.
@@ -448,9 +465,7 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def statfs(self, path):
-        """ Get the filesystem statistics.
-
-        Returns the statistics of the filesystem where the Stag repository is located.
+        """ Get the filesystem statistics. Always returns the statistics of the host filesystem.
 
         Args:
             path (str): The path to the file or folder.
@@ -483,7 +498,7 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def unlink(self, path):
-        """ Removes a file in the virtual filesystem.
+        """ Removes a file in the virtual filesystem. Used to remove a file from the repository or to remove tags from a file, depending on the provided path.
 
         Args:
             path (str): The path to the file to remove.
@@ -518,14 +533,14 @@ class StagFS(Operations):
         return
 
     def utimens(self, path, times=None):
-        """ Sets the access and modified times of a file or folder.
+        """ Sets the access and modified times of path. Changes those attributes in the host filesystem.
 
         Args:
             path (str): The path to a file or folder in the virtual filesystem.
             times: If times is not `None`, it must be a 2-tuple of the form (atime, mtime) where each member is an int or float expressing seconds.
 
         Returns:
-            None
+            None on success.
 
         Raises:
             FuseOSError: If the path does not exist (errno.ENOENT).
@@ -538,7 +553,7 @@ class StagFS(Operations):
         else:
             raise FuseOSError(errno.ENOENT)
 
-        pass
+        return
 
     # ---------------------------------------------------------------------------------------------------------------
     # Folder methods
@@ -559,12 +574,13 @@ class StagFS(Operations):
         return 0
 
     def mkdir(self, path, mode):
-        """ Creates a directory in the virtual filesystem.
-
-        Since tags are folders in the real filesystem, all this function does is create a directory in the real filesystem.
+        """ Creates a directory in the virtual filesystem. Since tags are folders in the host filesystem, this function creates a directory in the host filesystem.
 
         Args:
             path (str): The path to create a new folder.
+
+        Returns:
+            None: Returns None if directory was created successfully in the host filesystem.
 
         Raises:
             Whatever os.mkdir() might raise.
@@ -591,7 +607,7 @@ class StagFS(Operations):
         return 0
 
     def readdir(self, path, fh):
-        """ Reads the content of a directory in the virtual filesystem.
+        """ Reads the content of a directory in the virtual filesystem. Returns all files with that tag and all tags with files in common.
 
         Args:
             path (str): The path to the directory in the virtual filesystem (assuming its always a folder).
@@ -652,10 +668,13 @@ class StagFS(Operations):
         return 0
 
     def rmdir(self, path):
-        """ Deletes a folder in the virtual filesystem.
+        """ Deletes a folder in the virtual filesystem. Used to remove a tag from the repository.
 
         Args:
             path (str): The path of the folder to remove.
+
+        Returns:
+            None: If the directory was removed sucessfully from the host filesystem and deleted from the repository.
 
         Raises:
             FuseOSError: errno.ENOENT if it doesn't point to a valid path.
@@ -693,7 +712,7 @@ class StagFS(Operations):
     # ---------------------------------------------------------------------------------------------------------------
 
     def create(self, path, mode, fi=None):
-        """ Create a file in the virtual filesystem.
+        """ Create a file in the virtual filesystem. Also creates a file in the host filesystem.
 
         Args:
             path (str): Path to the file in the virtual filesystem.
@@ -815,7 +834,7 @@ class StagFS(Operations):
         with open(real_path, 'r+') as f:
             f.truncate(length)
 
-        pass
+        return
 
     def write(self, path, buf, offset, fh):
         """ Write data to an open file.
