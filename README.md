@@ -56,6 +56,7 @@ TODO: guide que mostra todas as funcionalidades presentes no Stag com uma breve 
 - remover tags de ficheiros
 - remover tags
 - remover ficheiros
+- correr no background (nao sei se deveria ser uma subseccao a parte ou nao)
  -->
 
 # Motivation
@@ -89,6 +90,10 @@ Therefore, I decided to make my own version of TMSU, with ~~blackjack~~ smaller 
 This is a small program developed by somebody who is not an experienced programmer. If you have any comments, feedback, suggestions or even feature requests, don't hesitate in opening a ticket or a discussion in the Github repository.
 
 If you would like to submit code, you will need basic knowledge of Python, SQL and FUSE. Both the CLI and the filesystem are implemented in the file [stag](./stag). After making any change there, make sure it passes the tests. The test units use [pytest](https://docs.pytest.org/en/stable/).
+
+# Disclaimer
+
+Stag is a personal project, not enterprise grade software developed by a team. I use it myself and it works well for me, but bugs can happen, so don’t trust it with important files unless you’ve got backups (which you should always have anyways!). Stag repositories are kept in a single folder, so backing up is very straight forward.
 
 # References
 
