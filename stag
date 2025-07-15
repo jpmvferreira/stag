@@ -311,20 +311,52 @@ class StagFS(Operations):
 
         raise FuseOSError(errno.ENOSYS)
 
-    def link(self, target, source):
-        """ Creates a hardlink between two paths.
-
-        Hard links are not supported in this filesystem and this function will always raise FuseOSError.
+    def link(self, source, target):
+        """ Creates a hardlink between two paths in the virtual filesystem. Corresponds to adding a tag to a file.
 
         Args:
-            target (str): Target location for the hardlink in the virtual filesystem.
-            source (str): File that the hardlink will point to in the virtual filesystem.
+            source (str): Path of the link.
+            target (str): Path which the link will point to.
 
-        Raises:
-            FuseOSError: Always raised with errno.ENOSYS.
+        Returns:
+            None on success.
         """
 
-        raise FuseOSError(errno.ENOSYS)
+        # fetch tags, real path and basenames
+        *new_tags, source_name = source.split("/")[1:]
+
+        *_, target_name = target.split("/")[1:]
+        real_path = self.src + "/" + target_name
+
+        # source and target must have the same name
+        if source_name != target_name:
+            raise FuseOSError(errno.ENOENT)
+
+        # check if the target path is a file and is valid
+        is_root, is_file, is_tag, is_valid = self.__get_info(target_name, check_valid=True)
+
+        if not is_valid:
+            raise FuseOSError(errno.ENOENT)
+
+        if is_root or is_tag:
+            raise FuseOSError(errno.EISDIR)
+
+        # every tag in new_tags must exist
+        # NOTE: I think this check is pointless because ln always makes a call to getattr before calling symlink, implying the folder already exists
+        for tag in new_tags:
+            if not os.path.isdir(self.src + "/" + tag):
+                raise FuseOSError(errno.ENOENT)
+
+        # get current tags and add the ones from new_tags
+        res = self.cur.execute(f"SELECT tags FROM files WHERE path LIKE '{target_name}'").fetchone()
+        tags = set([tag for tag in res[0].split("/") if tag] + new_tags)
+        tags = "/" + "//".join(tags) + "/"
+
+        # write it to the database
+        self.cur.execute(f"UPDATE files SET tags = '{tags}' WHERE path = '{target_name}'")
+        self.con.commit()
+
+        return
 
     def listxattr(self, path):
         """List all extended attribute names for a file or directory.
@@ -438,49 +470,17 @@ class StagFS(Operations):
     def symlink(self, source, target):
         """ Creates a symlink in the virtual filesystem.
 
+        Symbolic links are not supported in this filesystem and this function will always raise FuseOSError.
+
         Args:
             source (str): Path of the symlink.
             target (str): Path which the symlink will point to.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
         """
 
-        # for some reason target does not start with "/", add it for consistency
-        target = "/" + target
-
-        # fetch tags, real path and basenames
-        *new_tags, source_name = source.split("/")[1:]
-
-        *_, target_name = target.split("/")[1:]
-        real_path = self.src + "/" + target_name
-
-        # source and target must have the same name
-        if source_name != target_name:
-            raise FuseOSError(errno.ENOENT)
-
-        # check if the target path is a file and is valid
-        is_root, is_file, is_tag, is_valid = self.__get_info(target_name, check_valid=True)
-
-        if not is_valid:
-            raise FuseOSError(errno.ENOENT)
-
-        if is_root or is_tag:
-            raise FuseOSError(errno.EISDIR)
-
-        # every tag in new_tags must exist
-        # NOTE: I think this check is pointless because ln always makes a call to getattr before calling symlink, implying the folder already exists
-        for tag in new_tags:
-            if not os.path.isdir(self.src + "/" + tag):
-                raise FuseOSError(errno.ENOENT)
-
-        # get current tags and add the ones from new_tags
-        res = self.cur.execute(f"SELECT tags FROM files WHERE path LIKE '{target_name}'").fetchone()
-        tags = set([tag for tag in res[0].split("/") if tag] + new_tags)
-        tags = "/" + "//".join(tags) + "/"
-
-        # write it to the database
-        self.cur.execute(f"UPDATE files SET tags = '{tags}' WHERE path = '{target_name}'")
-        self.con.commit()
-
-        return
+        raise FuseOSError(errno.ENOSYS)
 
     def unlink(self, path):
         """ Removes a file in the virtual filesystem.
