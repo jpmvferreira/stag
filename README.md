@@ -97,15 +97,7 @@ Stag is a personal project, not enterprise grade software developed by a team. I
 
 # References
 
-The **fusepy** Github repository:
-
-- https://github.com/fusepy/fusepy
-- Mainly the file `fuse.py` where the FUSE object is implemented
-
-The **libfuse** documentation:
-
-- https://libfuse.github.io/doxygen/index.html
-- Emphasis to the file where the operations available in a FUSE filesystem are defined (Data Structures > fuse_operations)
+The [fusepy](https://github.com/fusepy/fusepy) Github repository, in particular the file `fuse.py`, where the FUSE Python object is implemented. Another important source was the official [libfuse](https://libfuse.github.io/doxygen/index.html) documentation, mainly the file that defines the operations available in a FUSE filesystem (Data Structures > fuse_operations).
 
 # License
 [MIT](./LICENSE.md)
