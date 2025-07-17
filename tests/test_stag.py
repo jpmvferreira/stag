@@ -259,12 +259,14 @@ class TestStag:
         os.system(f"ln {mnt}/mountains/mountains.txt {mnt}/city")
         ls_city = os.popen(f"ls {mnt}/city").read()
 
-        res = subprocess.run(["ln", f"{mnt}/city", f"{mnt}/mountains"], capture_output=True, text=True)
+        res1 = subprocess.run(["ln", f"{mnt}/city", f"{mnt}/mountains"], capture_output=True, text=True)
+        res2 = subprocess.run(["ln", f"{mnt}/city/porto.txt", f"{mnt}/snow/banana.txt"], capture_output=True, text=True)
 
         try:
             assert "porto.txt" in ls_mountains
             assert "mountains.txt" in ls_city
-            assert res.returncode != 0
+            assert res1.returncode != 0
+            assert res2.returncode != 0
 
         finally:
             self.__unmount_stag(p)
