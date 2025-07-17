@@ -517,7 +517,7 @@ class StagFS(Operations):
 
         # check if the path to the file is valid
         if not is_valid:
-            raise FuseOSError( errno.ENOENT)
+            raise FuseOSError(errno.ENOENT)
 
         # remove tags or file depending on where the removal was issued
         if tags:
