@@ -1,6 +1,7 @@
 # global imports
 from fuse import FUSE, FuseOSError, Operations
 import multiprocessing
+import subprocess
 import tempfile
 import sqlite3
 import shutil
@@ -233,10 +234,37 @@ class TestStag:
         ls = os.popen(f"ls {mnt}").read()
         ls_city = os.popen(f"ls {mnt}/city").read()
 
+        fail_command = subprocess.run(["touch", f"{mnt}/non-existing-tag/file.txt"], capture_output=True, text=True)
+
         try:
             assert "lisbon.txt" in ls
             assert "lisbon.txt" in ls_city
             assert "content of lisbon.txt" == os.popen(f"cat {mnt}/lisbon.txt").read()
+            assert fail_command.returncode != 0
+
+        finally:
+            self.__unmount_stag(p)
+            self.__remove_stag(tmpdir)
+
+        pass
+
+    # add tags to files
+    def test_ln(self):
+        fs, tmpdir, mnt = self.__create_stag()
+        p = self.__mount_stag(fs, mnt)
+
+        os.system(f"ln {mnt}/porto.txt {mnt}/mountains")
+        ls_mountains = os.popen(f"ls {mnt}/mountains").read()
+
+        os.system(f"ln {mnt}/mountains/mountains.txt {mnt}/city")
+        ls_city = os.popen(f"ls {mnt}/city").read()
+
+        res = subprocess.run(["ln", f"{mnt}/city", f"{mnt}/mountains"], capture_output=True, text=True)
+
+        try:
+            assert "porto.txt" in ls_mountains
+            assert "mountains.txt" in ls_city
+            assert res.returncode != 0
 
         finally:
             self.__unmount_stag(p)
