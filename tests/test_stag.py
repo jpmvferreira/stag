@@ -273,3 +273,46 @@ class TestStag:
             self.__remove_stag(tmpdir)
 
         pass
+
+    # change the name of a tag
+    def test_mv(self):
+        fs, tmpdir, mnt = self.__create_stag()
+        p = self.__mount_stag(fs, mnt)
+
+        ls_city = os.popen(f"ls {mnt}/city").read()
+        os.system(f"mv {mnt}/mountains/city {mnt}/snow/cities")
+        ls_cities = os.popen(f"ls {mnt}/cities").read()
+
+        try:
+            assert ls_city == ls_cities
+
+        finally:
+            self.__unmount_stag(p)
+            self.__remove_stag(tmpdir)
+
+        pass
+
+    # merge tags
+    def test_mv2(self):
+        # TODO
+
+        pass
+
+    # rename and change tags of files
+    def test_mv3(self):
+        fs, tmpdir, mnt = self.__create_stag()
+        p = self.__mount_stag(fs, mnt)
+
+        os.system(f"mv {mnt}/fuji.txt {mnt}/snow/banana.txt")
+        ls = os.popen(f"ls {mnt}").read()
+        ls_snow = os.popen(f"ls {mnt}/snow").read()
+
+        try:
+            assert "banana.txt" in ls
+            assert "banana.txt" in ls_snow
+
+        finally:
+            self.__unmount_stag(p)
+            self.__remove_stag(tmpdir)
+
+        pass

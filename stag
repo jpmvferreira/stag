@@ -436,16 +436,79 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def rename(self, old, new):
-        """ Rename a file or directory in the virtual filesystem. Used to add and remove tags from a file.
+        """ Renames a file or a directory in the virtual filesystem. Used to add and remove tags from a file or a directory.
 
         Args:
             old (str): The current path to the file or directory in the virtual filesystem.
             new (str): The new path for the file or directory in the virtual filesystem.
         """
 
-        # TODO
+        is_root, is_file, is_tag, is_valid = self.__get_info(old, check_valid=True)
 
-        raise FuseOSError(errno.ENOSYS)
+        if not is_valid:
+            raise FuseOSError(errno.ENOENT)
+
+        *old_tags, old_name = old.split("/")[1:]
+        *new_tags, new_name = new.split("/")[1:]
+
+        old_path = self.src + "/" + old_name
+        new_path = self.src + "/" + new_name
+
+        if is_tag:
+            # if new_path is a directory, merge the two corresponding tags
+            if os.path.isdir(new_path):
+                # this is a little bit hacky, but when the user runs 'mv <old_name> <new_name>' and <new_name> is a folder
+                # what happens is that mv translates this to 'mv <old_name> <new_name>/<old_name>'
+                # to undo this, I have to re-assign old_name
+                new_name = new_tags[-1]
+
+                # now we can merge the tags
+                os.rmdir(old_path)
+                self.cur.execute(
+                    f"""
+                    UPDATE files
+                    SET tags = CASE
+                        WHEN tags LIKE '%/{new_name}/%' THEN REPLACE(tags, '/{old_name}/', '')
+                        ELSE REPLACE(tags, '/{old_name}/', '/{new_name}/')
+                    END
+                    WHERE tags LIKE '%/{old_name}/%';
+                    """
+                )
+                self.con.commit()
+
+            # if new_path is a file, return an error
+            elif os.path.isfile(new_path):
+                raise FuseOSError(errno.ENOTDIR)
+
+            # if its neither a file nor a directory, rename the corresponding tag
+            else:
+                os.rename(old_path, new_path)
+                self.cur.execute(f"UPDATE files SET tags = REPLACE(tags, '/{old_name}/', '/{new_name}/') WHERE tags LIKE '%/{old_name}/%'")
+                self.con.commit()
+
+        if is_file:
+            # check if new path already exists
+            if old_name != new_name:
+                # if it does, raise error
+                if os.path.exists(new_path):
+                    raise FuseOSError(errno.EEXIST)  # mv acts funny when I do this, but at least it doesn't overwrite
+
+                # otherwise, rename file
+                os.rename(old_path, new_path)
+                self.cur.execute(f"UPDATE files SET path = '{new_name}' WHERE path = '{old_name}'")
+                self.con.commit()
+
+            # if the tags differ, update them in the database
+            if set(new_tags) != set(old_tags):
+                if new_tags:
+                    new_tags = "/" + "//".join(new_tags) + "/"
+                else:
+                    new_tags = ""
+
+                self.cur.execute(f"UPDATE files SET tags = '{new_tags}' WHERE path = '{new_name}'")
+                self.con.commit()
+
+        return
 
     def setxattr(self, path, name, value, options, position=0):
         """Set the value of an extended attribute for a file or directory.
