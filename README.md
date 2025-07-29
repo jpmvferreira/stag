@@ -81,13 +81,13 @@ Yeah... But, you know what could help you sort all of this mess? That's right: ~
 2) Integrates with the filesystem to browse the files and tags;
 3) Uses terminal utilities to interact with files and tags.
 
-As far as I know, there is only one project that comes close to this: [TMSU](https://tmsu.org/). However, I don't like the folder structure and the CLI was quite complicated. Besides, the interaction via filesystem is lacking to me. It is also written in Go, which I am not familiar with.
+As far as I know, there is only one project that comes close to this: [TMSU](https://tmsu.org/). However, I don't like the folder structure, the CLI is quite complicated and the interaction via filesystem is lacking. It also does more than what I want it to.
 
 Therefore, I decided to make my own version of TMSU, with ~~blackjack~~ smaller codebase and ~~hookers~~ better filesystem integration.
 
 # Contributing
 
-This is a small program developed by somebody who is not an experienced programmer. If you have any comments, feedback, suggestions or even feature requests, don't hesitate in opening a ticket or a discussion in the Github repository.
+This is a small program developed by somebody who is not an experienced programmer. If you have any comments, feedback, suggestions or even feature requests, don't hesitate in opening a ticket or a discussion in this repository.
 
 # Disclaimer
 
@@ -95,7 +95,10 @@ Stag is a personal project, not enterprise grade software. I use it myself and i
 
 # References
 
-The [fusepy](https://github.com/fusepy/fusepy) Github repository, in particular the file `fuse.py`, where the FUSE Python object is implemented. Another important source was the official [libfuse](https://libfuse.github.io/doxygen/index.html) documentation, mainly the file that defines the operations available in a FUSE filesystem (Data Structures > fuse_operations).
+The [fusepy](https://github.com/fusepy/fusepy) Github repository, in particular the Python object FUSE implemented in `fuse.py`.
+
+Also the official [libfuse](https://libfuse.github.io/doxygen/index.html) documentation, mainly the file that defines the operations available in a FUSE filesystem (Data Structures > fuse_operations).
 
 # License
+
 [MIT](./LICENSE.md)
