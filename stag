@@ -11,7 +11,6 @@ import sys
 import os
 
 
-# configure logger and define the decorator
 logging.basicConfig(
     level=logging.INFO,                                   # default logging level for this script
     format='[%(asctime)s] [%(levelname)s]\n%(message)s',  # message format
@@ -918,30 +917,29 @@ class StagFS(Operations):
         return os.write(fh, buf)
 
 
-@click.command()
-@click.option(     "-I", "--INIT",  "Linit",  type=click.STRING, nargs=1, metavar=" <PATH>",      help="Initialize a new repository at <PATH>")
-@click.option(     "-i", "--init",  "init",   type=click.STRING, nargs=1, metavar=" <NAME>",      help="Initialize a new repository at $STAG_SHARE/<NAME>")
-@click.option(     "-M", "--MOUNT", "Lmount", type=click.STRING, nargs=2, metavar="<SRC>  <MNT>", help="Mount the repository at <SRC> to <MNT>")
-@click.option(     "-m", "--mount", "mount",  type=click.STRING, nargs=2, metavar="<NAME> <MNT>", help="Mount the repository at $STAG_SHARE/<NAME> to <MNT>")
-@click.option(           "--rm",    "rm",     type=click.STRING, nargs=1, metavar="<NAME>",       help="Remove the repository at $STAG_SHARE/<NAME>")
-@click.option(           "--ls",    "ls",     is_flag=True,                                       help="List repositories $STAG_SHARE/<NAME>")
-@click.option(     "-d", "--debug", "debug",  is_flag=True,                                       help="Enable debug logging")
-@click.help_option("-h", "--help",                                                                help="Show this message and exit")
-def main(Linit, init, Lmount, mount, rm, ls, debug):
+@click.command(epilog="$STAG_SHARE must be set and point to a folder")
+@click.option(     "-i", "--init",  "init",   type=click.STRING, nargs=1, metavar=" <NAME>",       help="Initialize a new repository at $STAG_SHARE/<NAME>")
+@click.option(     "-m", "--mount", "mount",  type=click.STRING, nargs=2, metavar="<NAME> <MNT>",  help="Mount the repository at $STAG_SHARE/<NAME> to <MNT>")
+@click.option(           "--rm",    "rm",     type=click.STRING, nargs=1, metavar="       <NAME>", help="Remove the repository at $STAG_SHARE/<NAME>")
+@click.option(           "--ls",    "ls",     is_flag=True,                                        help="List repositories $STAG_SHARE/<NAME>")
+@click.option(     "-d", "--debug", "debug",  is_flag=True,                                        help="Enable debug logging")
+@click.help_option("-h", "--help",                                                                 help="Show this message and exit")
+def main(init, mount, rm, ls, debug):
     # check for the validity of the arguments
-    if sum([1 if i else 0 for i in [Linit, init, Lmount, mount, rm, ls]]) > 1:
-        print("only one of the following options is allowed simultaneously: --Linit, --init, --Lmount, --mount, --rm, --ls")
+    # this is not very intuitive but what I'm doing here is check if only a single flag is used, besides --debug or --help
+    if sum([1 if i else 0 for i in [init, mount, rm, ls]]) > 1:
+        print("only one of the following options is allowed simultaneously: --init, --mount, --rm, --ls")
         sys.exit(1)
 
     # check if $STAG_SHARE is set
     STAG_SHARE = os.getenv('STAG_SHARE')
 
-    if (not STAG_SHARE) and (init or mount or ls or rm):
-        print("$STAG_SHARE environmental variable is not set but is required")
+    if not STAG_SHARE:
+        print("$STAG_SHARE is not set but is required")
         sys.exit(1)
 
-    if (not os.path.isdir(STAG_SHARE)) and (init or mount):
-        print("$STAG_SHARE is set but path does not exist")
+    if not os.path.isdir(STAG_SHARE):
+        print("$STAG_SHARE is set but path is not a directory")
         sys.exit(1)
 
     # set logging level
@@ -950,11 +948,8 @@ def main(Linit, init, Lmount, mount, rm, ls, debug):
         logging.getLogger().setLevel(logging.INFO)
 
     # initialize a repository
-    if init or Linit:
-        if init:
-            init = os.path.abspath(f"{STAG_SHARE}/{init}")
-        if Linit:
-            init = os.path.abspath(Linit)
+    if init:
+        init = os.path.abspath(f"{STAG_SHARE}/{init}")
 
         # create folder if it does not exist
         if not os.path.isdir(init):
@@ -980,15 +975,10 @@ def main(Linit, init, Lmount, mount, rm, ls, debug):
         print(f"new repository initialized in {init}")
 
     # mount a repository
-    if mount or Lmount:
-        if mount:
-            src, mnt = mount
-            src = os.path.abspath(f"{STAG_SHARE}/{src}")
-            mnt = os.path.abspath(mnt)
-        if Lmount:
-            src, mnt = Lmount
-            src = os.path.abspath(src)
-            mnt = os.path.abspath(mnt)
+    if mount:
+        src, mnt = mount
+        src = os.path.abspath(f"{STAG_SHARE}/{src}")
+        mnt = os.path.abspath(mnt)
 
         files = f"{src}/files"
         db    = f"{src}/stag.sql"
