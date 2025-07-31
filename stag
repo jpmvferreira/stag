@@ -951,14 +951,13 @@ def main(init, mount, rm, ls, debug):
     if init:
         init = os.path.abspath(f"{STAG_SHARE}/{init}")
 
-        # create folder if it does not exist
-        if not os.path.isdir(init):
-            os.mkdir(init)
-
-        # check if init is empty
-        if os.listdir(init):
-            print(f"folder {init} is not empty")
+        # exit if repository already exists
+        if os.path.exists(init):
+            print(f"a repository with the same name already exists")
             sys.exit(1)
+
+        # create repository
+        os.mkdir(init)
 
         # initialize the database
         con = sqlite3.connect(f"{init}/stag.sql")
