@@ -609,7 +609,7 @@ class StagFS(Operations):
             FuseOSError: If the path does not exist (errno.ENOENT).
         """
 
-        is_root, is_file, is_tag, is_valid = __get_info(path, check_valid=True)
+        is_root, is_file, is_tag, is_valid = self.__get_info(path, check_valid=True)
 
         if is_valid:
             os.utime(path, times=times)
