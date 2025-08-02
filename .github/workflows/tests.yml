@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  tests:
 
     runs-on: ubuntu-latest
 
@@ -24,9 +24,9 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: "3.x"
-    - name: Install dependencies
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install fusepy click pytest
-    - name: Tests with pytest
-      run: pytest
+    - name: Run tests
+      run: pytest -s -vv
