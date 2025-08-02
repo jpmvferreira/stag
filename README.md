@@ -5,6 +5,7 @@
 <br/>
 
 # Overview
+
 **Stag** (**S**imple **Tag**ger) is a FUSE-based filesystem that upgrades your filesystem to support a tag-based structure. It turns tags into folders and remains compatible with a standard Unix utilities and file managers.
 
 Key features are:
@@ -184,7 +185,7 @@ This is a small program developed by somebody who is not an experienced programm
 
 # Disclaimer
 
-Stag is a personal project, not enterprise grade software. I use it myself and it works well for me, but bugs can happen, so don’t trust it with important files unless you’ve got backups (which you should always have anyways!). Stag repositories are kept in a single folder, so backing up is very straight forward.
+Stag is a personal project, not enterprise grade software. I use it myself and it works well for me, but bugs can happen, so don’t trust it with important files unless you’ve got backups (which you should have anyways!). Stag repositories are kept in a single folder in `$STAG_SHARE`, so backing up is very straight forward.
 
 # References
 
