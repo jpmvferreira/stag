@@ -14,15 +14,17 @@ Key features are:
 - **Same Tools as Usual**: Browse and manage your files the same way you would before, using your favorite file manager or the CLI.
 
 <!--- TODO: meter imagem/gif que eu desenhei no remarkable aqui -->
-<!--- Github ja suporta blocos: https://github.com/orgs/community/discussions/16925 -->
 
 # Installation
 
 The dependencies to run Stag are:
 
+- [FUSE](https://github.com/libfuse/libfuse)
 - [Python](https://www.python.org/) (version 3)
 - [Click](https://click.palletsprojects.com/en/stable/)
 - [fusepy](https://github.com/fusepy/fusepy)
+
+Installing these packages depends on your system, but both Click and fusepy are available via pip.
 
 ## Manual Installation
 
@@ -48,7 +50,7 @@ $ mv stag ~/.local/bin
 
 # Usage
 
-Stag stores its files in `$STAG_SHARE`. My advice is that you add the following line in your `.bashrc` or equivalent.
+Stag stores its files in the environmental flag `$STAG_SHARE`. This flag is required for the program to work. My advice is that you add the following line in your `.bashrc` or equivalent
 
 ```bash
 export STAG_SHARE="$HOME/.local/share/stag"
@@ -188,7 +190,7 @@ Stag is a personal project, not enterprise grade software. I use it myself and i
 
 The [fusepy](https://github.com/fusepy/fusepy) Github repository, in particular the Python object FUSE implemented in `fuse.py`.
 
-Also the official [libfuse](https://libfuse.github.io/doxygen/index.html) documentation, mainly the file that defines the operations available in a FUSE filesystem (Data Structures > fuse_operations).
+The official [libfuse](https://libfuse.github.io/doxygen/index.html) documentation, mainly the file that defines the operations available in a FUSE filesystem (Data Structures > fuse_operations).
 
 # License
 
