@@ -63,7 +63,7 @@ $ systemctl --user daemon-reload
 this will allow you to manage Stag mounts easier.
 
 > [!NOTE]
-> Systemd units do not inherit your user's environment variables, so you may need to change the path to the Stag executable in the unit file.
+> Systemd units do not inherit your user's environment variables, so you may need to change the path to the Stag executable and repository location in the unit file.
 
 <!--- TODO: AUR stag-git -->
 
