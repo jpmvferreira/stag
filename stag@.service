@@ -1,0 +1,9 @@
+[Unit]
+Description=Mount Stag repository (syntax: <name>:<mount>) for %I
+Documentation=https://www.github.com/jpmvferreira/stag
+
+[Service]
+ExecStart=/bin/bash -c '/usr/bin/stag -r "%h/.local/share/stag" mount "${0%%:*}" "${0#*:}"' '%I'
+
+[Install]
+WantedBy=default.target
