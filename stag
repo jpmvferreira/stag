@@ -960,12 +960,14 @@ def main(ctx, debug, repo):
         sys.exit(1)
 
     for path in os.listdir(repo):
+        path = f"{repo}/{path}"
+
         if not os.path.isdir(path):
-            print(f"{repo}/{path} is not a folder, are you sure this is a Stag repository?")
+            print(f"{path} is not a folder, are you sure this is a Stag repository?")
             sys.exit(1)
 
         if "stag.sql" not in os.listdir(path):
-            print(f"couldn't find database in {repo}/{path}, are you sure this is a Stag repository?")
+            print(f"couldn't find database in {path}, are you sure this is a Stag repository?")
             sys.exit(1)
 
     return
@@ -1092,6 +1094,25 @@ def ls(ctx):
 
     for path in os.listdir(repo):
         print(path)
+
+    return
+
+@main.command(short_help="Check repositories")
+@click.pass_context
+def check(ctx):
+    """
+    Check repositories
+    """
+
+    debug = ctx.obj["DEBUG"]
+    repo  = ctx.obj["REPO"]
+
+    print("repository mounted")
+    for path in os.listdir(repo):
+        if os.path.exists(f"{repo}/{path}/stag.lock"):
+            print(path, "yes")
+        else:
+            print(path, "no")
 
     return
 
