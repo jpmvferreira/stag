@@ -933,117 +933,150 @@ class StagFS(Operations):
         return os.write(fh, buf)
 
 
-@click.command(epilog="$STAG_SHARE must be set and point to a folder")
-@click.option(     "-i", "--init",  "init",   type=click.STRING, nargs=1, metavar=" <NAME>",       help="Initialize a new repository at $STAG_SHARE/<NAME>")
-@click.option(     "-m", "--mount", "mount",  type=click.STRING, nargs=2, metavar="<NAME> <MNT>",  help="Mount the repository at $STAG_SHARE/<NAME> to <MNT>")
-@click.option(           "--rm",    "rm",     type=click.STRING, nargs=1, metavar="       <NAME>", help="Remove the repository at $STAG_SHARE/<NAME>")
-@click.option(           "--ls",    "ls",     is_flag=True,                                        help="List repositories $STAG_SHARE/<NAME>")
-@click.option(     "-d", "--debug", "debug",  is_flag=True,                                        help="Enable debug logging")
-@click.help_option("-h", "--help",                                                                 help="Show this message and exit")
-def main(init, mount, rm, ls, debug):
-    # check for the validity of the arguments
-    # this is not very intuitive but what I'm doing here is check if only a single flag is used, besides --debug or --help
-    if sum([1 if i else 0 for i in [init, mount, rm, ls]]) > 1:
-        print("only one of the following options is allowed simultaneously: --init, --mount, --rm, --ls")
-        sys.exit(1)
-
-    # check if $STAG_SHARE is set
-    STAG_SHARE = os.getenv('STAG_SHARE')
-
-    if not STAG_SHARE:
-        print("$STAG_SHARE is not set but is required")
-        sys.exit(1)
-
-    if not os.path.isdir(STAG_SHARE):
-        print("$STAG_SHARE is set but path is not a directory")
-        sys.exit(1)
+@click.group()
+@click.option("-d", "--debug", is_flag=True,                                 help="Enable debug logging")
+@click.option("-r", "--repo",  type=click.STRING, nargs=1, metavar=" <PATH>", help="Use <PATH> instead of ~/.local/share/stag")
+@click.pass_context
+def main(ctx, debug, repo):
+    ctx.ensure_object(dict)
 
     # set logging level
     logging.getLogger().setLevel(logging.WARNING)  # default logging level
     if debug:
         logging.getLogger().setLevel(logging.INFO)
 
-    # initialize a repository
-    if init:
-        init = os.path.abspath(f"{STAG_SHARE}/{init}")
+    # populate context object
+    ctx.obj["DEBUG"] = debug
 
-        # exit if repository already exists
-        if os.path.exists(init):
-            print(f"a repository with the same name already exists")
-            sys.exit(1)
+    if repo:
+        ctx.obj["REPO"] = repo
+    else:
+        ctx.obj["REPO"] = os.getenv("HOME") + "/.local/share/stag"
 
-        # create repository
-        os.mkdir(init)
+    return
 
-        # initialize the database
-        con = sqlite3.connect(f"{init}/stag.sql")
-        cur = con.cursor()
-        cur.execute("CREATE TABLE files(path, tags)")
-        cur.execute("CREATE TABLE tags(tags)")
-        con.commit()
-        con.close()
+@main.command(short_help="Initialize a repository")
+@click.pass_context
+@click.argument("name", type=click.STRING, nargs=1, metavar="<NAME>")
+def init(ctx, name):
+    """
+    Initialize a repository called <NAME>
+    """
 
-        # create folder for files
-        os.popen(f"mkdir {init}/files")
+    debug = ctx.obj["DEBUG"]
+    repo  = ctx.obj["REPO"]
 
-        # print success message
-        print(f"new repository initialized in {init}")
+    path  = os.path.abspath(f"{repo}/{name}")
 
-    # mount a repository
-    if mount:
-        src, mnt = mount
-        src = os.path.abspath(f"{STAG_SHARE}/{src}")
-        mnt = os.path.abspath(mnt)
+    # exit if repository already exists
+    if os.path.exists(path):
+        print(f"a repository with the same name already exists")
+        sys.exit(1)
 
-        files = f"{src}/files"
-        db    = f"{src}/stag.sql"
-        lock  = f"{src}/stag.lock"
+    # create repository
+    os.mkdir(path)
 
-        # check if src is a valid repository
-        if not os.path.isfile(db):
-            print(f"database file not found in {db}")
-            sys.exit(1)
+    # initialize the database
+    con = sqlite3.connect(f"{path}/stag.sql")
+    cur = con.cursor()
+    cur.execute("CREATE TABLE files(path, tags)")
+    cur.execute("CREATE TABLE tags(tags)")
+    con.commit()
+    con.close()
 
-        # check if mnt exists
-        if not os.path.isdir(mnt):
-            print(f"folder {mnt} does not exist")
-            sys.exit(1)
+    # create folder for files
+    os.popen(f"mkdir {path}/files")
 
-        # check if mnt is empty
-        if os.listdir(mnt):
-            print(f"folder {mnt} is not empty")
-            sys.exit(1)
+    # print success message
+    print(f"new repository initialize in {path}")
 
-        # check for lock file
-        if os.path.exists(lock):
-            print(f"repository is mounted, if you are confident that this is an error (caused by e.g. powerloss) you can manually remove the file {lock}")
-            sys.exit(1)
+    return
 
-        # create lock file
-        with open(lock, "w") as f:
-            f.write(str(os.getpid()))
+@main.command(short_help="Mount a repository")
+@click.pass_context
+@click.argument("name",  type=click.STRING, nargs=1, metavar="<NAME>")
+@click.argument("mount", type=click.STRING, nargs=1, metavar="<PATH>")
+def mount(ctx, name, mount):
+    """
+    Mount the repository <NAME> in <PATH>
+    """
 
-        # mount the filesystem
-        try:
-            FUSE(StagFS(files,db), mnt, nothreads=True, foreground=True)
-        finally:
-            os.remove(lock)
+    debug = ctx.obj["DEBUG"]
+    repo  = ctx.obj["REPO"]
 
-    # remove a repository
-    if rm:
-        # check for lock file
-        rm = os.path.abspath(f"{STAG_SHARE}/{rm}")
-        lock  = f"{rm}/stag.lock"
-        if os.path.exists(lock):
-            print(f"repository is mounted, if you are confident that this is an error (caused by e.g. powerloss) you can manually remove the file {lock}")
-            sys.exit(1)
+    src = os.path.abspath(f"{repo}/{name}")
+    mnt = os.path.abspath(mount)
 
-        shutil.rmtree(rm)
+    files = f"{src}/files"
+    db    = f"{src}/stag.sql"
+    lock  = f"{src}/stag.lock"
 
-    # list repositories
-    if ls:
-        for path in os.listdir(f"{STAG_SHARE}"):
-            print(path)
+    # check if src is a valid repository
+    if not os.path.isfile(db):
+        print(f"database file not found in {db}")
+        sys.exit(1)
+
+    # check if mnt exists
+    if not os.path.isdir(mnt):
+        print(f"folder {mnt} does not exist")
+        sys.exit(1)
+
+    # check if mnt is empty
+    if os.listdir(mnt):
+        print(f"folder {mnt} is not empty")
+        sys.exit(1)
+
+    # check for lock file
+    if os.path.exists(lock):
+        print(f"repository is mounted, if you are confident that this is an error (caused by e.g. powerloss) you can manually remove the file {lock}")
+        sys.exit(1)
+
+    # create lock file
+    with open(lock, "w") as f:
+        f.write(str(os.getpid()))
+
+    # mount the filesystem
+    try:
+        FUSE(StagFS(files,db), mnt, nothreads=True, foreground=True)
+    finally:
+        os.remove(lock)
+
+    return
+
+@main.command(short_help="Remove a repository")
+@click.pass_context
+@click.argument("name", type=click.STRING, nargs=1, metavar="<NAME>")
+def rm(ctx, name):
+    """
+    Remove the repository <NAME>
+    """
+
+    debug = ctx.obj["DEBUG"]
+    repo  = ctx.obj["REPO"]
+
+    # check for lock file
+    rm = os.path.abspath(f"{repo}/{name}")
+    lock  = f"{rm}/stag.lock"
+    if os.path.exists(lock):
+        print(f"repository is mounted, if you are confident that this is an error (caused by e.g. powerloss) you can manually remove the file {lock}")
+        sys.exit(1)
+
+    shutil.rmtree(rm)
+
+    return
+
+@main.command(short_help="List all repositories")
+@click.pass_context
+def ls(ctx):
+    """
+    List all repositories
+    """
+
+    debug = ctx.obj["DEBUG"]
+    repo  = ctx.obj["REPO"]
+
+    for path in os.listdir(repo):
+        print(path)
 
     return
 
@@ -1051,4 +1084,4 @@ def main(init, mount, rm, ls, debug):
 if __name__ == '__main__':
     # increase the maximum width for the help dialog
     # see https://click.palletsprojects.com/en/stable/documentation/
-    main(max_content_width=120)
+    main(obj={}, max_content_width=120)
