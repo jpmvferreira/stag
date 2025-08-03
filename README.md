@@ -77,6 +77,9 @@ To begin using Stag, first create a repository. For example, to create a reposit
 $ stag init myrepo
 ```
 
+> [!NOTE]
+> Stag assumes the repository is located in `~/.local/share/stag` by default. This can be overwritten using the flag `-r`.
+
 You can list all repositories at any time with
 
 ```console
