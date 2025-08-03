@@ -47,35 +47,38 @@ and place it somewhere in your `$PATH`, e.g.
 $ mv stag ~/.local/bin
 ```
 
+If you are using Systemd, there is a unit file in the repository that you can use to keep Stag running in the background
+```console
+$ wget https://github.com/jpmvferreira/stag/blob/master/stag@.service ~/.config/systemd/user
+$ systemctl --user daemon-reload
+```
+
 <!--- TODO: AUR, criar stag-git porque nao tenho versoes por enquanto, meter aqui systemd unit -->
 
 # Usage
 
-Stag stores its files in the environmental flag `$STAG_SHARE`. This flag is required for the program to work. My advice is that you add the following line in your `.bashrc` or equivalent
-
-```bash
-export STAG_SHARE="$HOME/.local/share/stag"
-```
-
-With that out of the way, you can now create a new repository, let's call it `myrepo`, with
+The first thing you do is creating a repository, which for demonstration purposes we will call `myrepo`
 
 ```console
-$ stag --init myrepo
+$ stag init myrepo
 ```
 
 You can list all repositories you have created so far using
 
 ```console
-$ stag --ls
+$ stag ls
 ```
 
 The way you interact with Stag is via filesystem calls, via your favorite text editor or CLI tools. But first, you have to mount it, which you can by running
 
 ```console
 $ mkdir mnt
-$ stag --mount myrepo mnt
+$ stag mount myrepo mnt
 $ cd mnt
 ```
+
+> [!TIP]
+> If you downloaded the Systemd unit file you can mount this repository in the background with `systemctl --user start stag@<name>:<full path>`. Systemd will output some warning regarding the usage of "/", you can ignore those!
 
 This is where you would add your files to the mount directory, the same way you usually would: by copying them or moving them to the corresponding folder. For illustration purposes, let's create some dummy files
 
