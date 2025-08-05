@@ -294,7 +294,20 @@ class TestStag:
 
     # merge tags
     def test_mv2(self):
-        # TODO
+        fs, tmpdir, mnt = self.__create_stag()
+        p = self.__mount_stag(fs, mnt)
+
+        files_city = os.popen(f"find {mnt}/city -maxdepth 1 -type f -printf '%f\n'").read()
+        os.system(f"mv {mnt}/city {mnt}/mountains")
+        files_mountains = os.popen(f"find {mnt}/mountains -maxdepth 1 -type f -printf '%f\n'").read()
+
+        try:
+            assert set(files_city.split("\n")) <= set(files_mountains.split("\n"))
+            assert "mountains.txt" in files_mountains
+
+        finally:
+            self.__unmount_stag(p)
+            self.__remove_stag(tmpdir)
 
         pass
 
