@@ -14,7 +14,7 @@ Key features are:
 - **Files are Files**: Each file that you tag will show up in one or more folders, integrating seamlessly with any file manager.
 - **Same Tools as Usual**: Browse and manage your files the same way you would before, using your favorite file manager or the CLI.
 
-<!--- TODO: meter imagem/gif que eu desenhei no remarkable aqui -->
+Stag is fully functional, but it's **still in alpha**, so things might change a bit before the first full release. Once everything settles down, I'll start putting out official versions.
 
 # Installation
 
@@ -65,11 +65,7 @@ this will allow you to manage Stag mounts easier.
 > [!NOTE]
 > Systemd units do not inherit your user's environment variables, so you may need to change the path to the Stag executable and repository location in the unit file.
 
-<!--- TODO: AUR stag-git -->
-
 # Usage
-
-## Getting Started
 
 To begin using Stag, first create a repository. For example, to create a repository named `myrepo`
 
@@ -99,7 +95,10 @@ $ cd mnt
 > ```
 > systemctl --user start stag@<name>:<full path>
 > ```
-> Systemd may warn about the use of "/", but these warnings can be ignored.
+> Systemd will warn you about using `/`, to avoid issues, replace all `/` with `-`, e.g.:
+> ```
+> systemctl --user enable now stag@wallpapers:-home-user-wallpapers-
+> ```
 
 Add files to your repository as you would in any directory, by copying or moving them into the mount point. For demonstration purposes, let's create the following files
 
