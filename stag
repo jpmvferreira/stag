@@ -451,7 +451,7 @@ class StagFS(Operations):
         raise FuseOSError(errno.ENOSYS)
 
     def rename(self, old, new):
-        """ Renames a file or a directory in the virtual filesystem. Used to add and remove tags from a file or a directory.
+        """ Renames a file or a directory in the virtual filesystem. Used to add and remove tags from a file, rename files and tags and merge tags.
 
         Args:
             old (str): The current path to the file or directory in the virtual filesystem.
@@ -472,10 +472,18 @@ class StagFS(Operations):
         if is_tag:
             # if new_path is a directory, merge the two corresponding tags
             if os.path.isdir(new_path):
-                # this is a little bit hacky, but when the user runs 'mv <old_name> <new_name>' and <new_name> is a folder
-                # what happens is that mv translates this to 'mv <old_name> <new_name>/<old_name>'
-                # to undo this, I have to re-assign old_name
-                new_name = new_tags[-1]
+                # when the user runs 'mv <old_name> <new_name>' and <new_name> is a folder
+                # mv makes a call to rename with '<old_name>' and '<new_name>/<old_name>' instead
+                # to undo this, I have to remove the last piece of the path
+                new = os.path.dirname(new)
+                *new_tags, new_name = new.split("/")[1:]
+                new_path = self.src + "/" + new_name
+
+                # if the tag exists but is not visible to the user, refuse to perform the merge
+                # this can be annoying, but it also prevents ghost overwrites and I would rather be safe than sorry!
+                _, _, _, is_valid = self.__get_info(new, check_valid=True)
+                if not is_valid:
+                    raise FuseOSError(errno.EEXIST)
 
                 # now we can merge the tags
                 os.rmdir(old_path)
@@ -502,11 +510,12 @@ class StagFS(Operations):
                 self.con.commit()
 
         if is_file:
-            # check if new path already exists
+            # if the old file and new file have different names
             if old_name != new_name:
+                # check if new path already exists
                 # if it does, raise error
                 if os.path.exists(new_path):
-                    raise FuseOSError(errno.EEXIST)  # mv acts funny when I do this, but at least it doesn't overwrite
+                    raise FuseOSError(errno.EEXIST)
 
                 # otherwise, rename file
                 os.rename(old_path, new_path)

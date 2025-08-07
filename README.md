@@ -177,6 +177,9 @@ $ mv <tags>/<tag> <tags_alt>/<tag_new>
 
 where `<tags>` and `<tags_alt>` are ignored and `<tag>` will be renamed to `<tag_new>`. If `<tag_new>` already exists, they will be merged.
 
+> [!NOTE]
+> To avoid ghost overwrites, Stag does not allow you to change the name of a file to one that already exists. As for tags, it will refuse to change the name to a tag that is not visible in the current subdirectory to avoid ghost merges.
+
 # Motivation
 
 Ever you ever started doing some spring cleaning and realized that
