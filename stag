@@ -823,6 +823,12 @@ class StagFS(Operations):
         else:
             tags = ""
 
+        # the user might be trying to create a file with the same name as another file, but in a different subfolder
+        # this wouldn't trigger a conflict in getattr and it would still call create
+        # here we double check to make sure no such file exist and avoid creating duplicates
+        if os.path.exists(real_path):
+            raise FuseOSError(errno.EEXIST)
+
         # add the file to the database
         self.cur.execute(f"INSERT INTO files VALUES ('{basename}', '{tags}')")
         self.con.commit()
