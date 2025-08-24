@@ -248,6 +248,28 @@ class TestStag:
 
         pass
 
+    # create a new file on the repository but with special characters
+    def test_create2(self):
+        fs, tmpdir, mnt = self.__create_stag()
+        p = self.__mount_stag(fs, mnt)
+
+        filename = """ç''?\??'\##$%\&ºª=@})([]}««>»>>««"""
+
+        open(f"{mnt}/city/{filename}.txt", "w").write("this is a very weird file name")
+        ls = os.listdir(mnt)
+        ls_city = os.listdir(f"{mnt}/city")
+
+        try:
+            assert f"{filename}.txt" in ls
+            assert f"{filename}.txt" in ls_city
+            assert ["this is a very weird file name"] == open(f"{mnt}/{filename}.txt").readlines()
+
+        finally:
+            self.__unmount_stag(p)
+            self.__remove_stag(tmpdir)
+
+        pass
+
     # add tags to files
     def test_ln(self):
         fs, tmpdir, mnt = self.__create_stag()

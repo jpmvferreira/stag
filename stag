@@ -82,7 +82,7 @@ class StagFS(Operations):
         # the file is valid if its path is a subset of its corresponding tags
         if is_file:
             if check_valid:
-                res = self.cur.execute(f"SELECT tags FROM files WHERE path LIKE '{basename}'").fetchone()
+                res = self.__execute("SELECT tags FROM files WHERE path LIKE", basename).fetchone()
                 res_tags = [tag for tag in res[0].split("/") if tag]
 
                 tags = path.split("/")[1:-1]
@@ -114,6 +114,22 @@ class StagFS(Operations):
                 return is_root, is_file, is_tag, is_valid
             else:
                 return is_root, is_file, is_tag
+
+    def __execute(self, *args):
+        query  = []
+        params = []
+
+        for i, arg in enumerate(args):
+            if i % 2 == 0:
+                query.append(arg)
+            else:
+                query.append("?")
+                params.append(arg)
+
+        query  = " ".join(query)
+        params = tuple(params)
+
+        return self.cur.execute(query, params)
 
     # ---------------------------------------------------------------------------------------------------------------
     # Initialization and destruction
@@ -290,7 +306,7 @@ class StagFS(Operations):
         # if it's a file, check if the subfolder it's in is a valid combination of tags
         elif os.path.isfile(real_path):
             # fetch the tags associated with this file in the database
-            res = self.cur.execute(f"SELECT tags FROM files WHERE path LIKE '{basename}'").fetchone()
+            res = self.__execute("SELECT tags FROM files WHERE path LIKE", basename).fetchone()
             res_tags = [tag for tag in res[0].split("/") if tag]
 
             # if the tags on the requested path is a subset of the tags on the database, then the path is valid
@@ -381,12 +397,12 @@ class StagFS(Operations):
                 raise FuseOSError(errno.ENOENT)
 
         # get current tags and add the ones from new_tags
-        res = self.cur.execute(f"SELECT tags FROM files WHERE path LIKE '{target_name}'").fetchone()
+        res = self.__execute("SELECT tags FROM files WHERE path LIKE", target_name).fetchone()
         tags = set([tag for tag in res[0].split("/") if tag] + new_tags)
         tags = "/" + "//".join(tags) + "/"
 
         # write it to the database
-        self.cur.execute(f"UPDATE files SET tags = '{tags}' WHERE path = '{target_name}'")
+        self.__execute("UPDATE files SET tags =", tags, "WHERE path =", target_name)
         self.con.commit()
 
         return
@@ -487,14 +503,14 @@ class StagFS(Operations):
 
                 # now we can merge the tags
                 os.rmdir(old_path)
-                self.cur.execute(
-                    f"""
+                self.__execute(
+                    """
                     UPDATE files
                     SET tags = CASE
-                        WHEN tags LIKE '%/{new_name}/%' THEN REPLACE(tags, '/{old_name}/', '')
-                        ELSE REPLACE(tags, '/{old_name}/', '/{new_name}/')
+                        WHEN tags LIKE '%/' ||""", new_name, """|| '/%' THEN REPLACE(tags, '/' ||""", old_name, """|| '/', '')
+                        ELSE REPLACE(tags, '/' ||""", old_name, """|| '/', '/' ||""", new_name, """|| '/')
                     END
-                    WHERE tags LIKE '%/{old_name}/%';
+                    WHERE tags LIKE '%/' ||""", old_name, """|| '/%';
                     """
                 )
                 self.con.commit()
@@ -506,7 +522,7 @@ class StagFS(Operations):
             # if its neither a file nor a directory, rename the corresponding tag
             else:
                 os.rename(old_path, new_path)
-                self.cur.execute(f"UPDATE files SET tags = REPLACE(tags, '/{old_name}/', '/{new_name}/') WHERE tags LIKE '%/{old_name}/%'")
+                self.__execute("UPDATE files SET tags = REPLACE(tags, '/' ||", old_name, "|| '/', '/' ||", new_name, "|| '/') WHERE tags LIKE '%/' ||", old_name, "|| '/%'")
                 self.con.commit()
 
         if is_file:
@@ -519,7 +535,7 @@ class StagFS(Operations):
 
                 # otherwise, rename file
                 os.rename(old_path, new_path)
-                self.cur.execute(f"UPDATE files SET path = '{new_name}' WHERE path = '{old_name}'")
+                self.__execute("UPDATE files SET path =", new_name, " WHERE path =", old_name)
                 self.con.commit()
 
             # if the tags differ, update them in the database
@@ -529,7 +545,7 @@ class StagFS(Operations):
                 else:
                     new_tags = ""
 
-                self.cur.execute(f"UPDATE files SET tags = '{new_tags}' WHERE path = '{new_name}'")
+                self.__execute("UPDATE files SET tags =", new_tags, "WHERE path =", new_name)
                 self.con.commit()
 
         return
@@ -610,11 +626,11 @@ class StagFS(Operations):
         # remove tags or file depending on where the removal was issued
         if tags:
             for tag in tags:
-                self.cur.execute(f"UPDATE files SET tags = REPLACE(tags, '/{tag}/', '') WHERE path = '{basename}'")
+                self.__execute("UPDATE files SET tags = REPLACE(tags, '/' ||", tag, "|| '/', '') WHERE path =", basename)
             self.con.commit()
 
         else:
-            self.cur.execute(f"DELETE FROM files WHERE path = '{basename}'")
+            self.__execute("DELETE FROM files WHERE path =", basename)
             self.con.commit()
             os.unlink(real_path)
 
@@ -723,10 +739,10 @@ class StagFS(Operations):
             # make a query where we fetch all files that have the tags present in the variable `tags`
             conditions = []
             for tag in tags:
-                conditions.append(f"tags LIKE '%/{tag}/%'")
+                conditions.append("tags LIKE '%/' || ? || '/%'")
             query = "SELECT path, tags FROM files WHERE " + " AND ".join(conditions)
 
-            res = self.cur.execute(query).fetchall()
+            res = self.cur.execute(query, tags).fetchall()
 
             # go over all results, append all the files and return unique tags
             for line in res:
@@ -777,10 +793,10 @@ class StagFS(Operations):
         if len(tags) > 1:
             conditions = []
             for tag in tags:
-                conditions.append(f"tags LIKE '%/{tag}/%'")
+                conditions.append("tags LIKE '%/' || ? || '/%'")
             query = "SELECT path, tags FROM files WHERE " + " AND ".join(conditions)
 
-            res = self.cur.execute(query).fetchone()
+            res = self.cur.execute(query, tags).fetchone()
 
             if not res:
                 raise FuseOSError(errno.ENOENT)
@@ -790,7 +806,7 @@ class StagFS(Operations):
 
         # remove tags from files
         for tag in tags:
-            self.cur.execute(f"UPDATE files SET tags = REPLACE(tags, '/{tag}/', '')")
+            self.__execute("UPDATE files SET tags = REPLACE(tags, '/' ||", tag, "|| '/', '')")
         self.con.commit()
 
         return
@@ -830,7 +846,7 @@ class StagFS(Operations):
             raise FuseOSError(errno.EEXIST)
 
         # add the file to the database
-        self.cur.execute(f"INSERT INTO files VALUES ('{basename}', '{tags}')")
+        self.__execute("INSERT INTO files VALUES (", basename, ", ", tags, ")")
         self.con.commit()
 
         return os.open(real_path, os.O_WRONLY | os.O_CREAT, mode)
