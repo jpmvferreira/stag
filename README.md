@@ -18,20 +18,14 @@ Stag is fully functional, but it's **still in alpha**, so things might change a 
 
 # Installation
 
-To run Stag, you need:
+## Requirements
+
+Before running Stag, ensure you have the following dependencies installed
 
 - [FUSE](https://github.com/libfuse/libfuse)
-- [Python 3](https://www.python.org/)
-- [Click](https://click.palletsprojects.com/en/stable/) (Python package)
-- [fusepy](https://github.com/fusepy/fusepy) (Python package)
-
-You can install Click and fusepy using pip:
-
-```console
-$ pip install click fusepy
-```
-
-Make sure FUSE and Python is installed using your system's package manager (e.g., `apt`, `dnf`, `pacman`).
+- [Python 3](https://www.python.org/) (version 3.6 or newer recommended)
+- [Click](https://pypi.org/project/click/) (Python package for command-line interfaces)
+- [fusepy](https://pypi.org/project/fusepy/) (Python bindings for FUSE)
 
 ## Manual Installation
 
@@ -50,27 +44,24 @@ $ chmod +x stag
 and move it to a directory in your `$PATH`, e.g.
 
 ```console
-$ mv stag ~/.local/bin/
+$ mv stag ~/usr/bin/stagfs
 ```
 
-If you want Stag to run in the background using Systemd, download the unit file and place it somewhere Systemd can find it
+To run Stag in the background with Systemd, download the provided unit file and place it in your user systemd directory:
 
 ```console
-$ wget https://github.com/jpmvferreira/stag/raw/refs/heads/master/stag@.service -O ~/.config/systemd/user/stag@.service
+$ wget https://github.com/jpmvferreira/stag/raw/refs/heads/master/stag@.service -O ~/.config/systemd/user/stagfs@.service
 $ systemctl --user daemon-reload
 ```
 
-this will allow you to manage Stag mounts easier.
-
-> [!NOTE]
-> Systemd units do not inherit your user's environment variables, so you may need to change the path to the Stag executable and repository location in the unit file.
+this enables you to easily manage Stag mounts using Systemd commands.
 
 # Usage
 
 To begin using Stag, first create a repository. For example, to create a repository named `myrepo`
 
 ```console
-$ stag init myrepo
+$ stagfs init myrepo
 ```
 
 > [!NOTE]
@@ -79,25 +70,25 @@ $ stag init myrepo
 You can list all repositories at any time with
 
 ```console
-$ stag ls
+$ stagfs ls
 ```
 
 Stag works by mounting your repository as a virtual filesystem. To do this, create a mount point and mount your repository
 
 ```console
 $ mkdir mnt
-$ stag mount myrepo mnt
+$ stagfs mount myrepo mnt
 $ cd mnt
 ```
 
 > [!TIP]
 > If you use the Systemd unit file, you can mount a repository in the background with:
 > ```
-> systemctl --user start stag@<name>:<full path>
+> systemctl --user start stagfs@<repository name>:<mount point>
 > ```
 > Systemd will warn you about using `/`, to avoid issues, replace all `/` with `-`, e.g.:
 > ```
-> systemctl --user enable now stag@wallpapers:-home-user-wallpapers-
+> systemctl --user enable now stagfs@wallpapers:-home-user-wallpapers-
 > ```
 
 Add files to your repository as you would in any directory, by copying or moving them into the mount point. For demonstration purposes, let's create the following files
