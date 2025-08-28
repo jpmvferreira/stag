@@ -9,7 +9,7 @@ import time
 import os
 
 # local imports
-import stag
+import stagfs
 
 class TestStag:
     # ---------------------------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ class TestStag:
         con.close()
 
         # create filesystem object
-        fs = stag.StagFS(files, db)
+        fs = stagfs.StagFS(files, db)
 
         return fs, tmpdir, mnt
 

@@ -1,12 +1,12 @@
 <br/>
 <p align="center"> <img src="icon.png" alt="Logo" width="150"> </p>
-<h3 align="center"> Stag </h3>
+<h3 align="center"> StagFS </h3>
 <h3 align="center"> Upgrade your hierarchical filesystem with a tag-based structure </h3>
 <br/>
 
 # Overview
 
-**Stag** (**S**imple **Tag**ger) is a FUSE-based filesystem that upgrades your filesystem to support a tag-based structure. It turns tags into folders and remains compatible with a standard Unix utilities and file managers.
+**StagFS** (**S**imple **Tag**ger) is a FUSE-based filesystem that upgrades your filesystem to support a tag-based structure. It turns tags into folders and remains compatible with a standard Unix utilities and file managers.
 
 Key features are:
 
@@ -14,13 +14,13 @@ Key features are:
 - **Files are Files**: Each file that you tag will show up in one or more folders, integrating seamlessly with any file manager.
 - **Same Tools as Usual**: Browse and manage your files the same way you would before, using your favorite file manager or the CLI.
 
-Stag is fully functional, but it's **still in alpha**, so things might change a bit before the first full release. Once everything settles down, I'll start putting out official versions.
+StagFS is fully functional, but it's **still in alpha**, so things might change a bit before the first full release. Once everything settles down, I'll start putting out official versions.
 
 # Installation
 
 ## Requirements
 
-Before running Stag, ensure you have the following dependencies installed
+Before running StagFS, ensure you have the following dependencies installed
 
 - [FUSE](https://github.com/libfuse/libfuse)
 - [Python 3](https://www.python.org/) (version 3.6 or newer recommended)
@@ -29,43 +29,41 @@ Before running Stag, ensure you have the following dependencies installed
 
 ## Manual Installation
 
-First, download the Stag script
+StagFS is distributed as a standalone Python script that you can easily download with
 
 ```console
-$ wget https://github.com/jpmvferreira/stag/raw/refs/heads/master/stag
+$ wget https://github.com/jpmvferreira/stagfs/raw/refs/heads/master/stagfs
 ```
 
 make it executable
 
 ```console
-$ chmod +x stag
+$ chmod +x stagfs
 ```
 
 and move it to a directory in your `$PATH`, e.g.
 
 ```console
-$ mv stag ~/usr/bin/stagfs
+$ mv stagfs ~/usr/bin/stagfs
 ```
 
-To run Stag in the background with Systemd, download the provided unit file and place it in your user systemd directory:
+To run StagFS in the background with Systemd, download the provided unit file and place it in your user systemd directory
 
 ```console
-$ wget https://github.com/jpmvferreira/stag/raw/refs/heads/master/stag@.service -O ~/.config/systemd/user/stagfs@.service
+$ wget https://github.com/jpmvferreira/stagfs/raw/refs/heads/master/stagfs@.service -O ~/.config/systemd/user/stagfs@.service
 $ systemctl --user daemon-reload
 ```
 
-this enables you to easily manage Stag mounts using Systemd commands.
-
 # Usage
 
-To begin using Stag, first create a repository. For example, to create a repository named `myrepo`
+To get started with StagFS, begin by creating a new repository. For example, to create a repository called `myrepo`
 
 ```console
 $ stagfs init myrepo
 ```
 
 > [!NOTE]
-> Stag assumes the repository is located in `~/.local/share/stag` by default. This can be overwritten using the flag `-r`.
+> StagFS assumes the repository is located in `~/.local/share/stagfs` by default. This can be overwritten using the flag `-r`.
 
 You can list all repositories at any time with
 
@@ -73,7 +71,7 @@ You can list all repositories at any time with
 $ stagfs ls
 ```
 
-Stag works by mounting your repository as a virtual filesystem. To do this, create a mount point and mount your repository
+StagFS works by mounting your repository as a virtual filesystem. To do this, create a mount point and mount your repository
 
 ```console
 $ mkdir mnt
@@ -97,7 +95,7 @@ Add files to your repository as you would in any directory, by copying or moving
 $ touch lisbon.txt bern.txt venice.txt
 ```
 
-Tags in Stag are represented as directories. To create tags such as `city`, `mountains`, and `ocean`
+In StagFS, tags are directories. To create tags such as `city`, `mountains`, and `ocean`
 
 ```console
 $ mkdir city ocean mountains
@@ -168,7 +166,7 @@ $ mv <tags>/<tag> <tags_alt>/<tag_new>
 where `<tags>` and `<tags_alt>` are ignored and `<tag>` will be renamed to `<tag_new>`. If `<tag_new>` already exists, they will be merged.
 
 > [!NOTE]
-> To avoid ghost overwrites, Stag does not allow you to change the name of a file to one that already exists. As for tags, it will refuse to change the name to a tag that is not visible in the current subdirectory to avoid ghost merges.
+> To avoid ghost overwrites, StagFS does not allow you to change the name of a file to one that already exists. As for tags, it will refuse to change the name to a tag that is not visible in the current subdirectory to avoid ghost merges.
 
 # Motivation
 
@@ -202,7 +200,7 @@ This is a small program developed by somebody who is not an experienced programm
 
 # Disclaimer
 
-Stag is a personal project, not enterprise grade software. I use it myself and it works well for me, but bugs can happen, so don’t trust it with important files unless you’ve got backups (which you should have anyways!). Stag repositories are kept in a single folder, so backing up is very straight forward.
+StagFS is a personal project, not enterprise grade software. I use it myself and it works well for me, but bugs can happen, so don’t trust it with important files unless you’ve got backups (which you should have anyways!). StagFS repositories are kept in a single folder, so backing up is very straight forward.
 
 # References
 

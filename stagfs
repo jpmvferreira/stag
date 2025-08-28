@@ -966,7 +966,7 @@ class StagFS(Operations):
 
 @click.group()
 @click.option("-d", "--debug", is_flag=True,                                  help="Enable debug logging")
-@click.option("-r", "--repo",  type=click.STRING, nargs=1, metavar=" <PATH>", help="Use <PATH> instead of ~/.local/share/stag")
+@click.option("-r", "--repo",  type=click.STRING, nargs=1, metavar=" <PATH>", help="Use <PATH> instead of ~/.local/share/stagfs")
 @click.pass_context
 def main(ctx, debug, repo):
     ctx.ensure_object(dict)
@@ -982,7 +982,7 @@ def main(ctx, debug, repo):
     if repo:
         repo = os.path.abspath(repo)
     else:
-        repo = os.getenv("HOME") + "/.local/share/stag"
+        repo = os.getenv("HOME") + "/.local/share/stagfs"
 
     ctx.obj["REPO"] = repo
 

@@ -1,0 +1,1154 @@
+#!/usr/bin/env python3
+
+from fuse import FUSE, FuseOSError, Operations
+import logging
+import sqlite3
+import shutil
+import click
+import errno
+import stat
+import sys
+import os
+
+
+logging.basicConfig(
+    level=logging.INFO,                                   # default logging level for this script
+    format='[%(asctime)s] [%(levelname)s]\n%(message)s',  # message format
+    handlers=[logging.StreamHandler()]
+)
+
+def log_call(func):
+    def wrapper(self, *args, **kwargs):
+        try:
+            result = func(self, *args, **kwargs)
+            logging.info(f"{func.__name__}, args={args}, kwargs={kwargs}\nreturned {result!r}\n")
+            return result
+        except Exception as e:
+            logging.info(f"{func.__name__}, args={args}, kwargs={kwargs}\nraised {e.__class__.__name__}({errno.errorcode.get(e.errno, 'UNKNOWN')})\n")
+            raise
+    return wrapper
+
+
+class StagFS(Operations):
+    # ---------------------------------------------------------------------------------------------------------------
+    # Auxiliary functions
+    # ---------------------------------------------------------------------------------------------------------------
+
+    def __get_info(self, path, check_valid=False):
+        """ Analyze path on virtual filesystem determine its type (root folder, file or tag) and validity.
+
+        Args:
+            path (str): The path in the virtual filesystem to analyze.
+            check_valid (bool, optional): If True checks if the path is a valid file or tag path. Defaults to False.
+
+        Returns:
+            If check_valid is False, returns a tuple (is_root, is_file, is_tag):
+                - is_root (bool): True if the path is the root directory.
+                - is_file (bool): True if the path corresponds to a file.
+                - is_tag (bool): True if the path corresponds to a tag (directory).
+            If check_valid is True, returns a tuple (is_root, is_file, is_tag, is_valid):
+                - is_valid (bool): True if the path is a valid file or tag path, False otherwise.
+        """
+
+        # split `path` to get the basename
+        basename = path.split("/")[-1]
+
+        # if we're dealing with the root directory
+        if basename == "":
+            is_root = True
+            is_file = False
+            is_tag  = False
+
+            if check_valid:
+                is_valid = True
+                return is_root, is_file, is_tag, is_valid
+            else:
+                return is_root, is_file, is_tag
+
+        # otherwise check if its either a file or a tag
+        is_root = False
+        is_file = os.path.isfile(f"{self.src}/{basename}")
+        is_tag  = os.path.isdir(f"{self.src}/{basename}")
+
+        # if its neither, it doesn't exist and we return here
+        if (not is_file) and (not is_tag):
+            if check_valid:
+                is_valid = False
+                return is_root, is_file, is_tag, is_valid
+            else:
+                return is_root, is_file, is_tag
+
+        # if is a file
+        # the file is valid if its path is a subset of its corresponding tags
+        if is_file:
+            if check_valid:
+                res = self.__execute("SELECT tags FROM files WHERE path LIKE", basename).fetchone()
+                res_tags = [tag for tag in res[0].split("/") if tag]
+
+                tags = path.split("/")[1:-1]
+
+                is_valid = False
+                if (set(tags) <= set(res_tags)):
+                    is_valid = True
+
+                return is_root, is_file, is_tag, is_valid
+            else:
+                return is_root, is_file, is_tag
+
+        # if is a tag
+        # the tag is valid if there is at least one file inside the provided path or is located in the root dir
+        if is_tag:
+            if check_valid:
+                is_valid = False
+                tags = path.split("/")[1:]
+
+                if len(tags) == 1:
+                    is_valid = True
+
+                else:
+                    query = "SELECT path, tags FROM files WHERE " + " AND ".join([f"tags LIKE '%/{tag}/%'" for tag in tags])
+                    res = self.cur.execute(query).fetchone()
+                    if res:
+                        is_valid = True
+
+                return is_root, is_file, is_tag, is_valid
+            else:
+                return is_root, is_file, is_tag
+
+    def __execute(self, *args):
+        query  = []
+        params = []
+
+        for i, arg in enumerate(args):
+            if i % 2 == 0:
+                query.append(arg)
+            else:
+                query.append("?")
+                params.append(arg)
+
+        query  = " ".join(query)
+        params = tuple(params)
+
+        return self.cur.execute(query, params)
+
+    # ---------------------------------------------------------------------------------------------------------------
+    # Initialization and destruction
+    # ---------------------------------------------------------------------------------------------------------------
+
+    def __init__(self, src, db):
+        """ Called on object initialization. Connects to the SQL database
+
+        Args:
+            src (str): Path to the directory containing the real files.
+            db (str): Path to the SQLite database file.
+
+        Returns:
+            None
+        """
+
+        self.src = src
+        self.con = sqlite3.connect(db)
+        self.cur = self.con.cursor()
+
+        return
+
+    def __del__(self):
+        """ Called on object destruction. Closes the connection to the SQL database.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+
+        self.con.close()
+
+        return
+
+    def init(self, path):
+        """Called on filesystem initialization. Doesn't do anything at the moment.
+
+        This function must be used instead of `__init__` if you start threads on initialization.
+
+        Args:
+            path (str): Is always /.
+
+        Returns:
+            None
+        """
+
+        return
+
+    def destroy(self, path):
+        """Called on filesystem destruction. Closes the connection to the SQL database
+
+        Args:
+            path (str): Is always /.
+
+        Returns:
+            None
+        """
+
+        return
+
+    # ---------------------------------------------------------------------------------------------------------------
+    # Filesystem methods
+    # ---------------------------------------------------------------------------------------------------------------
+
+    def access(self, path, mode):
+        """ Check if path is accessible with the given mode.
+
+        According to the manpage of the function `access`, the usage of this function is discouraged and may be formally deprecated in the future.
+
+        Args:
+            path (str): The path to the file or directory in the virtual filesystem.
+            mode (int): The access mode to check (e.g., os.R_OK, os.W_OK, os.X_OK).
+
+        Raises:
+            FuseOSError: If the path does not exist or is not accessible with the given mode.
+        """
+
+        is_root, is_file, is_tag, is_valid = self.__get_info(path, check_valid=True)
+
+        if not is_valid:
+            raise FuseOSError(errno.ENOENT)
+
+        # fetch the path in the host filesystem
+        if is_root:
+            real_path = self.src
+        else:
+            basename = path.split("/")[-1]
+            real_path = self.src + "/" + basename
+
+        if not os.access(real_path, mode):
+            raise FuseOSError(errno.EACCES)
+
+        return None
+
+    def chmod(self, path, mode):
+        """ Update the permissions in the virtual and host filesystem.
+
+        Args:
+            path (str): The path to the file or folder.
+            mode (int): The numeric value of the permissions.
+
+        Raises:
+            FuseOSError: If the path does not exist (errno.ENOENT).
+        """
+
+        is_root, is_file, is_tag, is_valid = self.__get_info(path, check_valid=True)
+
+        if is_valid:
+            basename = path.split("/")[-1]
+            os.chmod(self.src + "/" + basename, mode)
+        else:
+            raise FuseOSError(errno.ENOENT)
+
+        return
+
+    def chown(self, path, uid, gid):
+        """ Change the owner in the virtual and host filesystem.
+
+        Args:
+            path (str): The path to the file or folder.
+            uid (int): User ID.
+            gid (int): Group ID.
+
+        Raises:
+            FuseOSError: If the path does not exist (errno.ENOENT).
+        """
+
+        is_root, is_file, is_tag, is_valid = self.__get_info(path, check_valid=True)
+
+        if is_valid:
+            basename = path.split("/")[-1]
+            os.chown(self.src + "/" + basename, uid, gid)
+        else:
+            raise FuseOSError(errno.ENOENT)
+
+        return
+
+    def getattr(self, path, fh=None):
+        """ Fetches the attributes of a path in the virtual filesystem, returning the attributes of the corresponding path in the host file system.
+
+        Args:
+            path (str): The path to the file or folder in the virtual filesystem.
+            fh (int, optional): File handle (ignored). Defaults to None.
+
+        Returns:
+            dict: A dictionary with the attributes of the specified path, similar to the output of os.lstat().
+
+        Raises:
+            FuseOSError: If the path does not exist (errno.ENOENT).
+        """
+
+        *tags, basename = path.split("/")[1:]
+        real_path = self.src + "/" + basename
+
+        # if basename is an empty string then we are in the root directory
+        # return the attributes of the source dir
+        if basename == "":
+            st = os.lstat(self.src)
+            at = dict((key, getattr(st, key)) for key in (
+                'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
+            ))
+
+        # if basename corresponds to a tag always return the attributes of the folder
+        # do this even if the current combination of folder does not exist
+        # this is important for symlink to work as a way to add tags to files
+        elif os.path.isdir(real_path):
+            st = os.lstat(real_path)
+            at = dict((key, getattr(st, key)) for key in (
+                'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
+            ))
+
+        # if it's a file, check if the subfolder it's in is a valid combination of tags
+        elif os.path.isfile(real_path):
+            # fetch the tags associated with this file in the database
+            res = self.__execute("SELECT tags FROM files WHERE path LIKE", basename).fetchone()
+            res_tags = [tag for tag in res[0].split("/") if tag]
+
+            # if the tags on the requested path is a subset of the tags on the database, then the path is valid
+            # otherwise, it is not a valid path, therefore there is no file at the specified location
+            if (set(tags) <= set(res_tags)):
+                st = os.lstat(real_path)
+                at = dict((key, getattr(st, key)) for key in (
+                    'st_atime', 'st_ctime','st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size','st_uid','st_blocks'
+                ))
+            else:
+                raise FuseOSError(errno.ENOENT)
+
+        # if it's neither a file nor a folder, then it does not exist
+        else:
+            raise FuseOSError(errno.ENOENT)
+
+        return at
+
+    def getxattr(self, path, name, position=0):
+        """Get the value of an extended attribute for path.
+
+        Extended attributes are not supported in this filesystem and this function will always raise FuseOSError.
+
+        Args:
+            path (str): The path to the file or directory in the virtual filesystem.
+            name (str): The name of the extended attribute to retrieve.
+            position (int, optional): Offset within the attribute value (usually 0, rarely used).
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def ioctl(self, path, cmd, arg, fip, flags, data):
+        """ Performs a variety of control functions related to streams devices.
+
+        This functionality is not supported in this filesystem and this function will always raise FuseOSError.
+
+        Args:
+            path (str): The path to the file or directory in the virtual filesystem.
+            cmd (int): The ioctl command code.
+            arg (int): Additional argument for the ioctl command.
+            fip (object): File information pointer (may be None).
+            flags (int): Flags for the ioctl operation.
+            data (bytes): Optional data for the ioctl operation.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def link(self, source, target):
+        """ Creates a hardlink in the virtual filesystem. Used to add tags to a file.
+
+        Args:
+            source (str): Path of the link.
+            target (str): Path which the link will point to.
+
+        Returns:
+            None on success.
+        """
+
+        # fetch tags, real path and basenames
+        *new_tags, source_name = source.split("/")[1:]
+
+        *_, target_name = target.split("/")[1:]
+        real_path = self.src + "/" + target_name
+
+        # source and target must have the same name
+        if source_name != target_name:
+            raise FuseOSError(errno.ENOENT)
+
+        # check if the target path is a file and is valid
+        is_root, is_file, is_tag, is_valid = self.__get_info(target_name, check_valid=True)
+
+        if not is_valid:
+            raise FuseOSError(errno.ENOENT)
+
+        if is_root or is_tag:
+            raise FuseOSError(errno.EISDIR)
+
+        # every tag in new_tags must exist
+        # NOTE: I think this check is pointless because ln always makes a call to getattr before calling symlink, implying the folder already exists
+        for tag in new_tags:
+            if not os.path.isdir(self.src + "/" + tag):
+                raise FuseOSError(errno.ENOENT)
+
+        # get current tags and add the ones from new_tags
+        res = self.__execute("SELECT tags FROM files WHERE path LIKE", target_name).fetchone()
+        tags = set([tag for tag in res[0].split("/") if tag] + new_tags)
+        tags = "/" + "//".join(tags) + "/"
+
+        # write it to the database
+        self.__execute("UPDATE files SET tags =", tags, "WHERE path =", target_name)
+        self.con.commit()
+
+        return
+
+    def listxattr(self, path):
+        """List all extended attribute names for a file or directory.
+
+        Extended attributes are not supported in this filesystem and this function will always raise FuseOSError.
+
+        Args:
+            path (str): The path to a file or directory in the virtual filesystem.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def mknod(self, path, mode, dev):
+        """ Creates special files.
+
+        This functionality is not supported in this filesystem and this function will always raise FuseOSError.
+
+        Args:
+            path (str): The path at which to create the node in the virtual filesystem.
+            mode (int): The file type and mode bits (permissions and file type).
+            dev (int): Device number (only relevant for device special files).
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def readlink(self, path):
+        """ Return the target path of a symlink in the virtual filesystem.
+
+        Symlinks are not supported in this filesystem and this function will always raise FuseOSError.
+
+        Args:
+            path (str): The path to the symlink in the virtual filesystem.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def removexattr(self, path, name):
+        """Remove an extended attribute from a file or directory.
+
+        Extended attributes are not supported in this filesystem and this function will always raise FuseOSError.
+
+        Args:
+            path (str): The path to the file or directory.
+            name (str): The name of the extended attribute to remove.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def rename(self, old, new):
+        """ Renames a file or a directory in the virtual filesystem. Used to add and remove tags from a file, rename files and tags and merge tags.
+
+        Args:
+            old (str): The current path to the file or directory in the virtual filesystem.
+            new (str): The new path for the file or directory in the virtual filesystem.
+        """
+
+        is_root, is_file, is_tag, is_valid = self.__get_info(old, check_valid=True)
+
+        if not is_valid:
+            raise FuseOSError(errno.ENOENT)
+
+        *old_tags, old_name = old.split("/")[1:]
+        *new_tags, new_name = new.split("/")[1:]
+
+        old_path = self.src + "/" + old_name
+        new_path = self.src + "/" + new_name
+
+        if is_tag:
+            # if new_path is a directory, merge the two corresponding tags
+            if os.path.isdir(new_path):
+                # when the user runs 'mv <old_name> <new_name>' and <new_name> is a folder
+                # mv makes a call to rename with '<old_name>' and '<new_name>/<old_name>' instead
+                # to undo this, I have to remove the last piece of the path
+                new = os.path.dirname(new)
+                *new_tags, new_name = new.split("/")[1:]
+                new_path = self.src + "/" + new_name
+
+                # if the tag exists but is not visible to the user, refuse to perform the merge
+                # this can be annoying, but it also prevents ghost overwrites and I would rather be safe than sorry!
+                _, _, _, is_valid = self.__get_info(new, check_valid=True)
+                if not is_valid:
+                    raise FuseOSError(errno.EEXIST)
+
+                # now we can merge the tags
+                os.rmdir(old_path)
+                self.__execute(
+                    """
+                    UPDATE files
+                    SET tags = CASE
+                        WHEN tags LIKE '%/' ||""", new_name, """|| '/%' THEN REPLACE(tags, '/' ||""", old_name, """|| '/', '')
+                        ELSE REPLACE(tags, '/' ||""", old_name, """|| '/', '/' ||""", new_name, """|| '/')
+                    END
+                    WHERE tags LIKE '%/' ||""", old_name, """|| '/%';
+                    """
+                )
+                self.con.commit()
+
+            # if new_path is a file, return an error
+            elif os.path.isfile(new_path):
+                raise FuseOSError(errno.ENOTDIR)
+
+            # if its neither a file nor a directory, rename the corresponding tag
+            else:
+                os.rename(old_path, new_path)
+                self.__execute("UPDATE files SET tags = REPLACE(tags, '/' ||", old_name, "|| '/', '/' ||", new_name, "|| '/') WHERE tags LIKE '%/' ||", old_name, "|| '/%'")
+                self.con.commit()
+
+        if is_file:
+            # if the old file and new file have different names
+            if old_name != new_name:
+                # check if new path already exists
+                # if it does, raise error
+                if os.path.exists(new_path):
+                    raise FuseOSError(errno.EEXIST)
+
+                # otherwise, rename file
+                os.rename(old_path, new_path)
+                self.__execute("UPDATE files SET path =", new_name, " WHERE path =", old_name)
+                self.con.commit()
+
+            # if the tags differ, update them in the database
+            if set(new_tags) != set(old_tags):
+                if new_tags:
+                    new_tags = "/" + "//".join(new_tags) + "/"
+                else:
+                    new_tags = ""
+
+                self.__execute("UPDATE files SET tags =", new_tags, "WHERE path =", new_name)
+                self.con.commit()
+
+        return
+
+    def setxattr(self, path, name, value, options, position=0):
+        """Set the value of an extended attribute for a file or directory.
+
+        Extended attributes are not supported in this filesystem and this function will always raise FuseOSError.
+
+        Args:
+            path (str): The path to the file or directory.
+            name (str): The name of the extended attribute to set.
+            value (bytes): The value to set for the attribute.
+            options (int): Flags indicating how the attribute should be set (e.g., create, replace).
+            position (int, optional): Offset within the attribute value (usually 0, rarely used).
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def statfs(self, path):
+        """ Get the filesystem statistics. Always returns the statistics of the host filesystem.
+
+        Args:
+            path (str): The path to the file or folder.
+
+        Returns:
+            dict: A dictionary containing filesystem statistics.
+        """
+
+        stv = os.statvfs(self.src)
+        return dict(
+            (key, getattr(stv, key)) for key in (
+                'f_bavail', 'f_bfree', 'f_blocks', 'f_bsize',  'f_favail',
+                'f_ffree',  'f_files', 'f_flag',   'f_frsize', 'f_namemax'
+            )
+        )
+
+    def symlink(self, source, target):
+        """ Creates a symlink in the virtual filesystem.
+
+        Symbolic links are not supported in this filesystem and this function will always raise FuseOSError.
+
+        Args:
+            source (str): Path of the symlink.
+            target (str): Path which the symlink will point to.
+
+        Raises:
+            FuseOSError: Always raised with errno.ENOSYS.
+        """
+
+        raise FuseOSError(errno.ENOSYS)
+
+    def unlink(self, path):
+        """ Removes a file in the virtual filesystem. Used to remove a file from the repository or to remove tags from a file, depending on the provided path.
+
+        Args:
+            path (str): The path to the file to remove.
+
+        Returns:
+            None: Returns None on successful removal.
+
+        Raises:
+            FuseOSError: If the path does not point to a valid file (errno.ENOENT).
+        """
+
+        *tags, basename = path.split("/")[1:]
+        real_path = self.src + "/" + basename
+
+        is_root, is_file, is_tag, is_valid = self.__get_info(path, check_valid=True)
+
+        # check if the path to the file is valid
+        if not is_valid:
+            raise FuseOSError(errno.ENOENT)
+
+        # remove tags or file depending on where the removal was issued
+        if tags:
+            for tag in tags:
+                self.__execute("UPDATE files SET tags = REPLACE(tags, '/' ||", tag, "|| '/', '') WHERE path =", basename)
+            self.con.commit()
+
+        else:
+            self.__execute("DELETE FROM files WHERE path =", basename)
+            self.con.commit()
+            os.unlink(real_path)
+
+        return
+
+    def utimens(self, path, times=None):
+        """ Sets the access and modified times of path. Changes those attributes in the host filesystem.
+
+        Args:
+            path (str): The path to a file or folder in the virtual filesystem.
+            times: If times is not `None`, it must be a 2-tuple of the form (atime, mtime) where each member is an int or float expressing seconds.
+
+        Returns:
+            None on success.
+
+        Raises:
+            FuseOSError: If the path does not exist (errno.ENOENT).
+        """
+
+        is_root, is_file, is_tag, is_valid = self.__get_info(path, check_valid=True)
+
+        if is_valid:
+            os.utime(path, times=times)
+        else:
+            raise FuseOSError(errno.ENOENT)
+
+        return
+
+    # ---------------------------------------------------------------------------------------------------------------
+    # Folder methods
+    # ---------------------------------------------------------------------------------------------------------------
+
+    def fsyncdir(self, path, datasync, fh):
+        """ Synchronize directory contents.
+
+         Args:
+            path (str): The path to the directory in the virtual filesystem.
+            datasync (bool): If True, only synchronize user data, not metadata.
+            fh (int): File handle for the directory.
+
+        Returns:
+            int: Always returns 0.
+        """
+
+        return 0
+
+    def mkdir(self, path, mode):
+        """ Creates a directory in the virtual filesystem. Since tags are folders in the host filesystem, this function creates a directory in the host filesystem.
+
+        Args:
+            path (str): The path to create a new folder.
+
+        Returns:
+            None: Returns None if directory was created successfully in the host filesystem.
+
+        Raises:
+            Whatever os.mkdir() might raise.
+        """
+
+        # split `path` to get the basename
+        basename = path.split("/")[-1]
+
+        # create directory at `basename`
+        os.mkdir(f"{self.src}/{basename}")
+
+        return
+
+    def opendir(self, path):
+        """Open a directory for reading.
+
+        Args:
+            path (str): The path to the directory in the virtual filesystem.
+
+        Returns:
+            int: Always returns 0.
+        """
+
+        return 0
+
+    def readdir(self, path, fh):
+        """ Reads the content of a directory in the virtual filesystem. Returns all files with that tag and all tags with files in common.
+
+        Args:
+            path (str): The path to the directory in the virtual filesystem (assuming its always a folder).
+            fh (int): File handle (ignored).
+
+        Yields:
+            str: The names of entries in the directory, including files, tags (as subdirectories), and '.' and '..'.
+        """
+
+        # split `path` to get the basename
+        basename = path.split("/")[-1]
+
+        # contents of the directory
+        dirents = ['.', '..']
+
+        # if it's the root directory
+        if basename == "":
+            dirents.extend(os.listdir(self.src))
+
+        # if it's a tag
+        elif os.path.isdir(self.src + "/" + basename):
+            # path is always preceeded by a slash
+            tags = path.split("/")[1:]
+
+            # make a query where we fetch all files that have the tags present in the variable `tags`
+            conditions = []
+            for tag in tags:
+                conditions.append("tags LIKE '%/' || ? || '/%'")
+            query = "SELECT path, tags FROM files WHERE " + " AND ".join(conditions)
+
+            res = self.cur.execute(query, tags).fetchall()
+
+            # go over all results, append all the files and return unique tags
+            for line in res:
+                file, ctag = line
+
+                dirents.append(file)
+                for tag in [i for i in ctag.split("/") if i]:
+                    # NOTE: if the nº of files get large the following for loop is inefficient
+                    # instead of writing `tag not in dirents` maybe have an auxiliary var to hold already printed tags
+                    if tag not in tags and tag not in dirents:
+                        dirents.append(tag)
+
+        for r in dirents:
+            yield r
+
+    def releasedir(self, path, fh):
+        """Release resources associated with an open directory.
+
+        Args:
+            path (str): The path to the directory in the virtual filesystem.
+            fh (int): File handle for the directory.
+
+        Returns:
+            int: Always returns 0.
+        """
+
+        return 0
+
+    def rmdir(self, path):
+        """ Deletes a folder in the virtual filesystem. Used to remove a tag from the repository.
+
+        Args:
+            path (str): The path of the folder to remove.
+
+        Returns:
+            None: If the directory was removed sucessfully from the host filesystem and deleted from the repository.
+
+        Raises:
+            FuseOSError: errno.ENOENT if it doesn't point to a valid path.
+        """
+
+        # get basename
+        basename = path.split("/")[-1]
+
+        # check whether `path` points to a valid combination of folders
+        tags = path.split("/")[1:]
+
+        if len(tags) > 1:
+            conditions = []
+            for tag in tags:
+                conditions.append("tags LIKE '%/' || ? || '/%'")
+            query = "SELECT path, tags FROM files WHERE " + " AND ".join(conditions)
+
+            res = self.cur.execute(query, tags).fetchone()
+
+            if not res:
+                raise FuseOSError(errno.ENOENT)
+
+        # remove directory
+        os.rmdir(f"{self.src}/{basename}")
+
+        # remove tags from files
+        for tag in tags:
+            self.__execute("UPDATE files SET tags = REPLACE(tags, '/' ||", tag, "|| '/', '')")
+        self.con.commit()
+
+        return
+
+    # ---------------------------------------------------------------------------------------------------------------
+    # File methods
+    # ---------------------------------------------------------------------------------------------------------------
+
+    def create(self, path, mode, fi=None):
+        """ Create a file in the virtual filesystem. Also creates a file in the host filesystem.
+
+        Args:
+            path (str): Path to the file in the virtual filesystem.
+            mode (int): The permissions mode to set on the new file.
+            fi (object, optional): File info object (may be None).
+
+        Returns:
+            int: A file descriptor for the newly created file obtained from os.open.
+        """
+
+        *tags, basename = path.split("/")
+        real_path = self.src + "/" + basename
+
+        # first element in tags is always an empty string, remove it
+        tags = tags[1:]
+
+        # a string with the tags to the add to the database
+        if tags:
+            tags = "/" + "//".join(tags) + "/"
+        else:
+            tags = ""
+
+        # the user might be trying to create a file with the same name as another file, but in a different subfolder
+        # this wouldn't trigger a conflict in getattr and it would still call create
+        # here we double check to make sure no such file exist and avoid creating duplicates
+        if os.path.exists(real_path):
+            raise FuseOSError(errno.EEXIST)
+
+        # add the file to the database
+        self.__execute("INSERT INTO files VALUES (", basename, ", ", tags, ")")
+        self.con.commit()
+
+        return os.open(real_path, os.O_WRONLY | os.O_CREAT, mode)
+
+    def flush(self, path, fh):
+        """ Flush any cached information for the specified file.
+
+        Args:
+            path (str): Path to the file in the virtual filesystem.
+            fh (int): File handle.
+
+        Returns:
+            int: Result of os.fsync (0 on success).
+        """
+
+        return os.fsync(fh)
+
+    def fsync(self, path, fdatasync, fh):
+        """ Synchronize file contents and metadata to disk.
+
+        This function will always pass its arguments to flush.
+
+        Args:
+            path (str): Path to the file in the virtual filesystem.
+            fdatasync (bool): If True, only synchronize user data, not metadata.
+            fh (int): File handle.
+
+        Returns:
+            int: Result of flush (0 on success).
+        """
+
+        return self.flush(path, fh)
+
+    def open(self, path, flags):
+        """ Open a file for reading or writing.
+
+        Args:
+            path (str): Path to the file in the virtual filesystem.
+            flags (int): Flags indicating access mode and options.
+
+        Returns:
+            int: File descriptor for the opened file obtained from os.open.
+        """
+
+        basename = path.split("/")[-1]
+        real_path = self.src + "/" + basename
+
+        return os.open(real_path, flags)
+
+    def read(self, path, length, offset, fh):
+        """ Read data from an open file.
+
+        Args:
+            path (str): Path to the file in the virtual filesystem.
+            length (int): Number of bytes to read.
+            offset (int): Offset in the file to start reading from.
+            fh (int): File handle.
+
+        Returns:
+            bytes: Data read from the file obtained from os.read.
+        """
+
+        os.lseek(fh, offset, os.SEEK_SET)
+
+        return os.read(fh, length)
+
+    def release(self, path, fh):
+        """ Release an open file (close it).
+
+        Args:
+            path (str): Path to the file in the virtual filesystem.
+            fh (int): File handle.
+
+        Returns:
+            int: Result of os.close (None on success).
+        """
+
+        return os.close(fh)
+
+    def truncate(self, path, length, fh=None):
+        """ Resize a file to a specified length.
+
+        Args:
+            path (str): Path to the file in the virtual filesystem.
+            length (int): The new size of the file in bytes.
+            fh (int, optional): File handle (may be None).
+
+        Returns:
+            None
+        """
+
+        basename = path.split("/")[-1]
+        real_path = self.src + "/" + basename
+
+        with open(real_path, 'r+') as f:
+            f.truncate(length)
+
+        return
+
+    def write(self, path, buf, offset, fh):
+        """ Write data to an open file.
+
+        Args:
+            path (str): Path to the file in the virtual filesystem.
+            buf (bytes): Data to write.
+            offset (int): Offset in the file to start writing at.
+            fh (int): File handle.
+
+        Returns:
+            int: Number of bytes written obtained from os.write.
+        """
+
+        os.lseek(fh, offset, os.SEEK_SET)
+
+        return os.write(fh, buf)
+
+
+@click.group()
+@click.option("-d", "--debug", is_flag=True,                                  help="Enable debug logging")
+@click.option("-r", "--repo",  type=click.STRING, nargs=1, metavar=" <PATH>", help="Use <PATH> instead of ~/.local/share/stagfs")
+@click.pass_context
+def main(ctx, debug, repo):
+    ctx.ensure_object(dict)
+
+    # set logging level
+    logging.getLogger().setLevel(logging.WARNING)  # default logging level
+    if debug:
+        logging.getLogger().setLevel(logging.INFO)
+
+    # populate context object
+    ctx.obj["DEBUG"] = debug
+
+    if repo:
+        repo = os.path.abspath(repo)
+    else:
+        repo = os.getenv("HOME") + "/.local/share/stagfs"
+
+    ctx.obj["REPO"] = repo
+
+    if not os.path.isdir(repo):
+        print(f"{repo} is not a directory, this cannot be a valid Stag repository")
+        sys.exit(1)
+
+    for path in os.listdir(repo):
+        path = f"{repo}/{path}"
+
+        if not os.path.isdir(path):
+            print(f"{path} is not a folder, are you sure this is a Stag repository?")
+            sys.exit(1)
+
+        if "stag.sql" not in os.listdir(path):
+            print(f"couldn't find database in {path}, are you sure this is a Stag repository?")
+            sys.exit(1)
+
+    return
+
+@main.command(short_help="Initialize a repository")
+@click.pass_context
+@click.argument("name", type=click.STRING, nargs=1, metavar="<NAME>")
+def init(ctx, name):
+    """
+    Initialize a repository called <NAME>
+    """
+
+    debug = ctx.obj["DEBUG"]
+    repo  = ctx.obj["REPO"]
+
+    path  = os.path.abspath(f"{repo}/{name}")
+
+    # exit if repository already exists
+    if os.path.exists(path):
+        print(f"a repository with the same name already exists")
+        sys.exit(1)
+
+    # create repository
+    os.mkdir(path)
+
+    # initialize the database
+    con = sqlite3.connect(f"{path}/stag.sql")
+    cur = con.cursor()
+    cur.execute("CREATE TABLE files(path, tags)")
+    cur.execute("CREATE TABLE tags(tags)")
+    con.commit()
+    con.close()
+
+    # create folder for files
+    os.popen(f"mkdir {path}/files")
+
+    # print success message
+    print(f"new repository initialize in {path}")
+
+    return
+
+@main.command(short_help="Mount a repository")
+@click.pass_context
+@click.argument("name",  type=click.STRING, nargs=1, metavar="<NAME>")
+@click.argument("mount", type=click.STRING, nargs=1, metavar="<PATH>")
+def mount(ctx, name, mount):
+    """
+    Mount the repository <NAME> in <PATH>
+    """
+
+    debug = ctx.obj["DEBUG"]
+    repo  = ctx.obj["REPO"]
+
+    src = os.path.abspath(f"{repo}/{name}")
+    mnt = os.path.abspath(mount)
+
+    files = f"{src}/files"
+    db    = f"{src}/stag.sql"
+    lock  = f"{src}/stag.lock"
+
+    # check if src is a valid repository
+    if not os.path.isfile(db):
+        print(f"database file not found in {db}")
+        sys.exit(1)
+
+    # check if mnt exists
+    if not os.path.isdir(mnt):
+        print(f"folder {mnt} does not exist")
+        sys.exit(1)
+
+    # check if mnt is empty
+    if os.listdir(mnt):
+        print(f"folder {mnt} is not empty")
+        sys.exit(1)
+
+    # check for lock file
+    if os.path.exists(lock):
+        print(f"repository is mounted, if you are confident that this is an error (caused by e.g. powerloss) you can manually remove the file {lock}")
+        sys.exit(1)
+
+    # create lock file
+    with open(lock, "w") as f:
+        f.write(str(os.getpid()))
+
+    # mount the filesystem
+    try:
+        FUSE(StagFS(files,db), mnt, nothreads=True, foreground=True)
+    finally:
+        os.remove(lock)
+
+    return
+
+@main.command(short_help="Remove a repository")
+@click.pass_context
+@click.argument("name", type=click.STRING, nargs=1, metavar="<NAME>")
+def rm(ctx, name):
+    """
+    Remove the repository <NAME>
+    """
+
+    debug = ctx.obj["DEBUG"]
+    repo  = ctx.obj["REPO"]
+
+    # check for lock file
+    rm = os.path.abspath(f"{repo}/{name}")
+    lock  = f"{rm}/stag.lock"
+    if os.path.exists(lock):
+        print(f"repository is mounted, if you are confident that this is an error (caused by e.g. powerloss) you can manually remove the file {lock}")
+        sys.exit(1)
+
+    shutil.rmtree(rm)
+
+    return
+
+@main.command(short_help="List all repositories")
+@click.pass_context
+def ls(ctx):
+    """
+    List all repositories
+    """
+
+    debug = ctx.obj["DEBUG"]
+    repo  = ctx.obj["REPO"]
+
+    for path in os.listdir(repo):
+        print(path)
+
+    return
+
+@main.command(short_help="Check repositories")
+@click.pass_context
+def check(ctx):
+    """
+    Check repositories
+    """
+
+    debug = ctx.obj["DEBUG"]
+    repo  = ctx.obj["REPO"]
+
+    print("repository mounted")
+    for path in os.listdir(repo):
+        if os.path.exists(f"{repo}/{path}/stag.lock"):
+            print(path, "yes")
+        else:
+            print(path, "no")
+
+    return
+
+
+if __name__ == '__main__':
+    # increase the maximum width for the help dialog
+    # see https://click.palletsprojects.com/en/stable/documentation/
+    main(obj={}, max_content_width=120)
