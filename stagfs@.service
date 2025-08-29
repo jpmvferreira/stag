@@ -3,7 +3,7 @@ Description=Mount Stag repository (syntax: <name>:<mount>) for %I
 Documentation=https://www.github.com/jpmvferreira/stag
 
 [Service]
-ExecStart=/bin/bash -c '/usr/bin/stagfs -r "%h/.local/share/stag" mount "${0%%:*}" "${0#*:}"' '%I'
+ExecStart=/bin/bash -c '/usr/bin/stagfs -r "%h/.local/share/stagfs" mount "${0%%:*}" "${0#*:}"' '%I'
 
 [Install]
 WantedBy=default.target
